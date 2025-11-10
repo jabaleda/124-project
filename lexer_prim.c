@@ -7,6 +7,7 @@
 
 typedef struct {
     char *value;
+    int prelimType;
     unsigned int line;  // for error handling
 } Lexeme;
 
@@ -41,6 +42,51 @@ int isDigit(char c) {
     }
 }
 
+int getPrelimType(char *str) {
+    int len = strlen(str);
+    int isAlpha, isDig;
+    char *current = str;
+    int alphabeticFlag = 0, digitsFlag = 0;
+    
+    // for each char in str, check if letter or digit
+    for(int i=0; i<len; i++){
+        isAlpha = isalpha(*current);
+        isDig = isdigit(*current);
+        if(isAlpha != 0 && alphabeticFlag == 0){
+            // toggle alphabetic flag on first encounter of a valid letter
+            alphabeticFlag = 1;
+            current++;
+            continue;
+        }
+        if(isDig && digitsFlag == 0){
+            // toggle alphabetic flag on first encounter of a number
+            digitsFlag = 1;
+            current++;
+            continue;
+        }
+        if((strcmp(current, ".") && digitsFlag == 1 && alphabeticFlag == 0) || 
+           (strcmp(current, "_") && alphabeticFlag == 1) || 
+           (isDig != 0 && digitsFlag == 1 && (alphabeticFlag == 0 || alphabeticFlag == 1)) || // on D from 01 or 11
+           (isAlpha != 0 && alphabeticFlag == 1 && (digitsFlag == 0 || digitsFlag == 1)) // on A from 10 or 11
+        ){
+            current++;
+            continue;
+        }
+        // if this is reached -> indicate error and return early
+        return 0;
+    }
+
+    if(alphabeticFlag == 0 && digitsFlag == 1){
+        return 1;   // a number type, digits only
+    }
+    if(alphabeticFlag == 1 && digitsFlag == 0){
+        return 2;   // an alphabetic type, letters only, could be keyword or a var ident
+    }
+    if(alphabeticFlag == 1 && digitsFlag == 1){
+        return 3;   // an alphanumeric type, could only be a var ident
+    }
+}
+
 
 // Lexeme List
 LexemeList *createLexemeList() {
@@ -50,10 +96,11 @@ LexemeList *createLexemeList() {
     return list;
 }
 
-Lexeme *createLexeme(char *value, unsigned int line) {
+Lexeme *createLexeme(char *value, int prelimtype, unsigned int line) {
     Lexeme *newlex = malloc(sizeof(Lexeme));
     newlex->value = malloc(sizeof(char) * (strlen(value) + 1));
     strcpy(newlex->value, value);
+    newlex->prelimType = prelimtype;
     newlex->line = line;
     return newlex;
     // then free substr in caller after lexeme creation
@@ -75,7 +122,7 @@ Lexeme *addLexemeToList(LexemeList *list, Lexeme *lex) {
 
 void printLexemeList(LexemeList *list) {
     for(int i = 0; i < list->total_num; i++) {
-        printf("Lexeme %d: %s (line %d)\n", i, list->lexemes[i]->value, list->lexemes[i]->line);
+        printf("Lexeme %d: %s (ptype %d, line %d)\n", i, list->lexemes[i]->value, list->lexemes[i]->prelimType, list->lexemes[i]->line + 1);
     }
 }
 
@@ -107,7 +154,7 @@ int  main() {
     int size = 0;
 
     // ? vary filename as needed. hardcoded file naming munaaa d2
-    char *cwd = "C:/Users/Julianne/Documents/25-26/CMSC-124/project/test.lol";
+    char *cwd = "C:/Users/Julianne/Documents/25-26/CMSC-124/project/repo-files/test.lol";
     printf("File path: %s\n", cwd);
 
     fileptr = fopen(cwd, "r");
@@ -191,14 +238,15 @@ int  main() {
                 chars_read++;
                 lines_read++;   // increment since \n is consumed
             } else {
+                // determine if text is alphabetic, alphanumeric, or digits
+                int prelimtype = getPrelimType(substr);
                 // else add to lexeme list
                 printf("Alphabetic/Digit/AlphaNum lexeme: %s\n", substr);
                 // create lexeme and add to list
-                Lexeme *newLex = createLexeme(substr, lines_read);
+                Lexeme *newLex = createLexeme(substr, prelimtype, lines_read);
                 addLexemeToList(lexemeList, newLex);
                 // test
                 // printLexemeList(lexemeList);
-                
             }
             // update current char to lexeme end
             current_char = lexeme_end;
@@ -222,10 +270,11 @@ int  main() {
                 char substr[chars_read+1];
                 strncpy(substr, current_char, chars_read);
                 substr[chars_read] = '\0'; // null-terminate the substring
+                int prelimtype = 4;
                 printf("Signed digit lexeme: %s\n", substr);
                 // add to lexeme list
                 // create lexeme and add to list
-                Lexeme *newLex = createLexeme(substr, lines_read);
+                Lexeme *newLex = createLexeme(substr, prelimtype, lines_read);
                 addLexemeToList(lexemeList, newLex);
             } else {
                 // error. just "-" is invalid lexeme
@@ -256,10 +305,11 @@ int  main() {
             char substr[chars_read+1];
             strncpy(substr, current_char, chars_read);
             substr[chars_read] = '\0'; // null-terminate the substring
+            int prelimtype = 5;
             printf("String literal lexeme: %s\n", substr);
             // add to lexeme list
             // create lexeme and add to list
-            Lexeme *newLex = createLexeme(substr, lines_read);
+            Lexeme *newLex = createLexeme(substr, prelimtype, lines_read);
             addLexemeToList(lexemeList, newLex);
             // update current char to lexeme end
             current_char = lexeme_end;
@@ -294,6 +344,16 @@ int  main() {
 
 
     printLexemeList(lexemeList);
+    // free buffer?
+
+
+    // * ----- Lexeme and Type Builder -----
+
+
+    // for each token in list
+    
+
+
 
     /* 
     TODO: Build Lexeme List
