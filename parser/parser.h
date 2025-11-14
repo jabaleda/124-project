@@ -173,6 +173,102 @@ typedef enum{
 
 } Symbol;
 
+char* string_ver[] = {
+	"INTEGER",
+	"FLOAT",
+	"STRING",
+	"BOOLEAN",
+	"TYPE",
+
+	"IDENT",
+
+	"HAI",
+	"KTHXBYE",
+	"WAZZUP",
+	"BUHBYE",
+	"ITZ",
+	"R",
+	"NOT",
+	"DIFFRINT",
+	"SMOOSH",
+	"MAEK",
+	"A",
+	"VISIBLE",
+	"GIMMEH",
+	"OIC",
+	"WTF",
+	"OMG",
+	"OMGWTF",
+	"UPPIN",
+	"NERFIN",
+	"YR",
+	"TIL",
+	"WILE",
+	"AN",
+	"GTFO",
+	"MKAY",
+
+	"SUM_OF",
+	"DIFF_OF",
+	"PRODUKT_OF",
+	"QUOSHUNT_OF",
+	"MOD_OF",
+	"BIGGR_OF",
+	"SMALLR_OF",
+	"BOTH_OF",
+	"EITHER_OF",
+	"WON_OF",
+	"ANY_OF",
+	"ALL_OF",
+	"BOTH_SAEM",
+	"O_RLY",
+	"YA_RLY",
+	"NO_WAI",
+	"I_IZ",
+
+	"I_HAS_A",
+	"IS_NOW_A",
+	"IM_IN_YR",
+	"IM_OUTTA_YR",
+	"HOW_IZ_I",
+
+	"PROG",
+	"VAR_DEC",
+	"VAR_VAL",
+	"LITERAL",
+	"STMT",
+	"SINGLE_STMT",
+	"COMPOUND_STMT",
+	"PRINT",
+	"INPUT",
+	"EXPR",
+	"ARITHMETIC",
+	"BOOLEAN_STMT",
+	"FIN_BOOLEAN",
+	"INF_BOOLEAN",
+	"INF_BOOLEAN_ARG",
+	"INF_LAST_ARG",
+	"CONCATENATION",
+	"CONCAT_OPERAND",
+	"COMPARISON",
+	"RELATIONAL",
+	"TYPECASTING",
+	"ASSIGNMENT",
+	"IF_ELSE",
+	"BRANCHES_BLOCK",
+	"SWITCH_CASE",
+	"CASE_BLOCK",
+	"DEFAULT_BLOCK",
+	"LOOP",
+	"LOOP_VAR_OPERATION",
+	"BREAK_CONDITION",
+	"BREAK_CHOICE",
+	"FUNCTION_DEFINITION",
+	"PARAMETER",
+	"FUNCTION_CALL",
+	"ARGUMENT"
+};
+
 
 // REMOVE LATER!!!
 typedef struct {
@@ -185,7 +281,9 @@ typedef struct {
 typedef struct ast_node{
 	TokenType type;
 	union {
-		int value; // for terminal/leaf (ident/literal)
+		float num_val; // for numeric value ng literal?
+		char* id_name; 	// for ident
+		char* string_val;	// for string literal
         struct ast_node** children; // for non-terminal's/root child nodes
 	};
 	int numChildren;

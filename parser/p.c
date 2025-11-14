@@ -2,16 +2,24 @@
 #include <stdlib.h>
 #include "parser.h"
 
+/*
+	Notes/Plans/WIP: 
+		1) pagsamahin na parts ng syntax and semantic analysis
+			ex: encountered valid var_assign -> add to a symbol table
+		2) no verbose error message with line + parser terminates when encountering syntax error
+		3) magulo kung san nagiincrement ng cur in some places; switches between before calling function ng symbols or within (necessary for now)
+*/
+
 #define curType (*cur)->type
 #define nextType (*cur++)->type
-
-
+Token** cur; // Pointer to token list, change type later to token pag nagana na lexer!!!
 
 Token* createToken(TokenType type){
 	Token* t = malloc(sizeof(Token));
 	t->type = type;
 	return t;
 }
+
 ast_node* createNode(int type){
 	ast_node* newNode = malloc(sizeof(ast_node));
 	newNode->type = type;
@@ -24,16 +32,14 @@ void addChild(ast_node* parent, ast_node* child){
 	parent->numChildren++;
 }
 
-void syntaxError(){
-	printf("Syntax error\n");
+void syntaxError(char *msg){
+	printf("Syntax error: %s\n", msg);
 	exit(1);
 }
 
 /*
 	Finite Automata? to parse token list and build AST
 */
-Token** cur; // Pointer to token list, change type later to token pag nagana na lexer!!!
-
 
 
 ast_node* var_dec(){
@@ -50,19 +56,28 @@ ast_node* var_val(){
 	printf(" IN VAR_VAL, cur = %d\n", curType);
 	switch(curType){
 		case TOK_IDENT:
-			printf("IDENT FOUND\n");
 			n = createNode(IDENT);
-			n->value = *((*cur)->lexeme);
+			n->id_name = *((*cur)->lexeme);
 			break;
 		case TOK_INTEGER:
+			n = createNode(INTEGER);
+			n->num_val = (int) *((*cur)->lexeme);
 			break;
 		case TOK_FLOAT:
+			n = createNode(FLOAT);
+			n->num_val = *((*cur)->lexeme);
 			break;
 		case TOK_STRING:
+			n = createNode(STRING);
+			n->string_val = *((*cur)->lexeme);
 			break;
 		case TOK_BOOLEAN:
+			n = createNode(BOOLEAN);
+			n->string_val = *((*cur)->lexeme);
 			break;
 		case TOK_TYPE:
+			n = createNode(TYPE);
+			n->string_val = *((*cur)->lexeme);
 			break;
 		default:
 			printf("Reached default of var_val\n"); // !!!
@@ -71,7 +86,30 @@ ast_node* var_val(){
 	return n;
 }
 
-ast_node* single_stmt(){
+ast_node* print(){
+	ast_node *n;
+	n = createNode(PRINT);
+	addChild(n, createNode(VISIBLE));
+	addChild(n, var_val());
+	return n;
+}
+
+ast_node* input(){
+	ast_node *n, *s;
+	n = createNode(INPUT);
+	addChild(n, createNode(GIMMEH));
+	cur++;
+	if(curType == IDENT) {
+		s = createNode(IDENT);
+		s->value = *(*cur)->lexeme;
+		addChild(n, createNode(IDENT));
+	} else {
+		syntaxError("Expected Identifier in GIMMEH");
+	}
+}
+
+ast_node* single_stmt(){ 
+	/*<single_stmt> ::= <print> | <input> | <expr> | <assignment> | <function_call> | GTFO */
 	ast_node *n, *s;
 	n = createNode(SINGLE_STMT);
 	// cur++;
@@ -80,18 +118,31 @@ ast_node* single_stmt(){
 	switch(curType){
 		case TOK_VISIBLE:	/* VISIBLE <var_val>*/
 			printf("VISIBLE FOUND\n");
-			addChild(n, createNode(VISIBLE));
-			addChild(n, var_val());
-			// if(nextType == TOK_IDENT){
-			// 	addChild(n, var_val());
-			// } else {
-			// 	printf("typeof next: %d %d\n", nextType, TOK_IDENT);
-			// 	syntaxError();
-			// }
-		case TOK_GIMMEH:
+			addChild(n, print());
+			break;
+		case TOK_GIMMEH:	/* GIMMEH varident*/
 			addChild(n, createNode(GIMMEH));
+			break;
+		case TOK_IDENT: /* varident R <var_val>*/
+			addChild(n, createNode(IDENT));
 			cur++;
-			if(curType == IDENT) addChild(n, createNode(IDENT));
+			if(curType == TOK_R){
+				addChild(n, createNode(R));
+			} else {
+				syntaxError("Expected R");
+			}
+			addChild(n, var_val());
+			break;
+		case TOK_I_IZ: /* <function_call> ::= I IZ funident MKAY | I IZ funident <argument> MKAY*/
+			addChild(n, createNode(I_IZ));
+			cur++;
+			if(curType == TOK_IDENT){
+				addChild(n, createNode);
+			}
+			break;
+			
+
+
 	}
 	if((*cur++)->type != TOK_KTHXBYE){	// end of program not encountered, check for <stmt> ::= <single_stmt> <stmt>
 		s = stmt();
@@ -141,20 +192,21 @@ ast_node* program(Token** tokenList, int numTokens){
 					cur++;
 				}
 			} else {
-				syntaxError();
+				syntaxError("Expected variable assignment or BUHBYE");
 			}
 		}
 	} else {
-		syntaxError();
+		syntaxError("Expected HAI");
 	}
-	if(cur < &tokenList[numTokens-1]){ // Encountered KTHXBYE early (not at end of list)
-		syntaxError();
+	if(cur < &tokenList[numTokens-1]){ // Encountered KTHXBYE early (other stuff found after KTHXBYE)
+		syntaxError("Statements past KTHXBYE");
 	}
 	return n;
 }
 
+// preorder traversal
 void visit(ast_node* node){
-	printf("%d\n", node->type);
+	printf("%s ", string_ver[node->type]);
 	for(int i = 0; i < node->numChildren; i++){
 		visit(node->children[i]);
 	}
@@ -189,8 +241,10 @@ int main(){
 	// }
 	ast_node* root = program(tokenList, numTokens);
 
+	printf("Post-order traversal of AST\n");
 	visit(root);
-	printf("Root's Children:\n");
-	listChildren(root);
-	listChildren(root->children[2]);
+	printf("\n");
+	// printf("Root's Children:\n");
+// 	listChildren(root);
+// 	listChildren(root->children[2]);
 }
