@@ -57,31 +57,34 @@ ast_node* var_val(){
 	switch(curType){
 		case TOK_IDENT:
 			n = createNode(IDENT);
-			n->id_name = *((*cur)->lexeme);
+			n->id_name = (*cur)->lexeme;
 			break;
 		case TOK_INTEGER:
 			n = createNode(INTEGER);
-			n->num_val = (int) *((*cur)->lexeme);
+			n->num_val = atoi((*cur)->lexeme);
 			break;
 		case TOK_FLOAT:
 			n = createNode(FLOAT);
-			n->num_val = *((*cur)->lexeme);
+			n->num_val = atof((*cur)->lexeme);
 			break;
 		case TOK_STRING:
 			n = createNode(STRING);
-			n->string_val = *((*cur)->lexeme);
+			n->string_val = (*cur)->lexeme;
 			break;
 		case TOK_BOOLEAN:
 			n = createNode(BOOLEAN);
-			n->string_val = *((*cur)->lexeme);
+			n->string_val = (*cur)->lexeme;
 			break;
 		case TOK_TYPE:
 			n = createNode(TYPE);
-			n->string_val = *((*cur)->lexeme);
+			n->string_val = (*cur)->lexeme;
 			break;
 		default:
 			printf("Reached default of var_val\n"); // !!!
-			// expr();
+			// try expr();
+			// not expr
+			// return null?
+			return NULL;
 	}
 	return n;
 }
@@ -101,10 +104,70 @@ ast_node* input(){
 	cur++;
 	if(curType == IDENT) {
 		s = createNode(IDENT);
-		s->value = *(*cur)->lexeme;
-		addChild(n, createNode(IDENT));
+		s->id_name = (*cur)->lexeme;
+		addChild(n, s);
 	} else {
 		syntaxError("Expected Identifier in GIMMEH");
+	}
+
+	return n;
+}
+
+ast_node* assignment(){
+	ast_node *n, *s;
+	n = createNode(IDENT);
+	cur++;
+	if(curType == TOK_R){
+		addChild(n, createNode(R));
+	} else {
+		syntaxError("Expected R");
+	}
+	s = var_val();
+	if(s != NULL){
+		addChild(n, s);
+	} else {
+		syntaxError("Expected type literal following R");
+	}
+	return n;
+}
+
+ast_node* function_call(){
+	ast_node* n = createNode(I_IZ), *s;
+	cur++;
+	if(curType == TOK_IDENT){
+		s = createNode(IDENT);
+		s->id_name = (*cur)->lexeme;
+		addChild(n, s);
+		cur++;
+		if(curType == TOK_MKAY){ // no args
+			addChild(n, createNode(MKAY));
+		} else if(curType == TOK_YR){ // has args
+			addChild(n, createNode(YR));
+			while(curType != TOK_MKAY){
+				s = var_val();
+				if(s != NULL){
+					addChild(n, s);
+				} else {
+					// error
+				}
+				cur++;
+				if(curType == TOK_AN){
+					addChild(n, createNode(AN));
+				} else {
+					// error
+				}
+			}
+			if(curType == TOK_MKAY){
+				addChild(n, createNode(MKAY));
+			} else {
+				// error
+			}
+
+		} else {
+			// error
+		}
+	} else {
+		syntaxError("Expected identifier after I IZ");
 	}
 }
 
@@ -121,25 +184,16 @@ ast_node* single_stmt(){
 			addChild(n, print());
 			break;
 		case TOK_GIMMEH:	/* GIMMEH varident*/
-			addChild(n, createNode(GIMMEH));
+			addChild(n, input());
 			break;
 		case TOK_IDENT: /* varident R <var_val>*/
 			addChild(n, createNode(IDENT));
-			cur++;
-			if(curType == TOK_R){
-				addChild(n, createNode(R));
-			} else {
-				syntaxError("Expected R");
-			}
-			addChild(n, var_val());
 			break;
 		case TOK_I_IZ: /* <function_call> ::= I IZ funident MKAY | I IZ funident <argument> MKAY*/
 			addChild(n, createNode(I_IZ));
-			cur++;
-			if(curType == TOK_IDENT){
-				addChild(n, createNode);
-			}
 			break;
+		default:
+			printf("Reached end of single_stmt\n");
 			
 
 
