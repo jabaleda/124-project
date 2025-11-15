@@ -3,10 +3,11 @@
 #include "parser.h"
 
 /*
-	Notes/Plans/WIP: 
+	Notes/Plans/WIP: (coding ts without testing...)
+		IMPORTANT: curType is compared against TOKENTYPES (prepended with TOK_) and not SYMBOLS
 		1) pagsamahin na parts ng syntax and semantic analysis
 			ex: encountered valid var_assign -> add to a symbol table
-			pros: catch agad semantic errors
+			pros: catch agad semantic errors, no need to do separate tree traversal, pdeng diretso run
 			cons: hirap debug; sayang pag may error
 		2) no verbose error message with line + parser terminates when encountering syntax error
 			pros: 
@@ -18,25 +19,16 @@
 			after a statement:
 			- checks if there are more statements
 			- checks for KTHXBYE (assumes no more statements then error pag may token pa past KTHXBYE)
+		6) no infinite boolean yet
+		7) issues with infinite arity in general (smoosh only has 2 operands atm)
+		8) something sa terminals
+			ex: for a <var_val> that evaluates to INTEGER node should it have a child with no type and only a value
+				example value = 5: para maproduce sa tree na <var_val> -> INTEGER -> 5
 */
 
 #define curType (*cur)->type
-#define nextType (*cur++)->type
+#define nextType (*cur+1)->type
 Token** cur; // Pointer to token list, change type later to token pag nagana na lexer!!!
-
-// int isIdOrLiteral(TokenType t){
-// 	if(t == TOK_IDENT || t == TOK_INTEGER|| t == TOK_FLOAT || t == TOK_STRING || TOK_TYPE) return 1;
-// 	return 0;
-// }
-
-// int isVarVal(TokenType t){
-// 	if(t == TOK_IDENT || t == TOK_INTEGER|| t == TOK_FLOAT || t == TOK_STRING || TOK_TYPE){
-
-// 	} else {
-		
-// 	}
-// }
-
 
 Token* createToken(TokenType type){
 	Token* t = malloc(sizeof(Token));
@@ -130,19 +122,19 @@ ast_node* input(){
 
 ast_node* assignment(){
 	ast_node *n, *s;
-	n = createNode(IDENT);
+	n = createNode(ASSIGNMENT);
+	s = createNode(IDENT);
+	s->string_val = (*cur)->lexeme; 
+	addChild(n, s);
 	cur++;
 	if(curType == TOK_R){
 		addChild(n, createNode(R));
+		s = var_val();
+		addChild(n, s);
 	} else {
 		syntaxError("Expected R");
 	}
-	s = var_val();
-	if(s != NULL){
-		addChild(n, s);
-	} else {
-		syntaxError("Expected type literal following R");
-	}
+	
 	return n;
 }
 
@@ -186,6 +178,7 @@ ast_node* function_call(){
 	return n;
 }
 
+/* Rules: <arithmetic> ::= (SUM OF | DIFF OF | PRODUKT OF | QUOSHUNT OF | MOD OF) <var_value> AN <var_value> */
 ast_node* arithmetic(){
 	ast_node* n;
 	n = createNode(ARITHMETIC);
@@ -198,158 +191,178 @@ ast_node* arithmetic(){
 				addChild(n, createNode(AN));
 				addChild(n, var_val());	
 			} else {
-				syntaxError("Expected AN in binary arithmetic SUM OF");
+				syntaxError("Expected arg separator AN in binary arithmetic");
 			}
 			break;
 		case TOK_DIFF_OF:
 			addChild(n, createNode(DIFF_OF));
 			addChild(n, var_val());
+			cur++;
 			if(curType == TOK_AN){
 				addChild(n, createNode(AN));
 				addChild(n, var_val());	
 			} else {
-				syntaxError("Expected arg separator AN in binary arithmetic DIFF OF");
+				syntaxError("Expected arg separator AN in binary arithmetic");
 			}
 			break;
 		case TOK_PRODUKT_OF:
 			addChild(n, createNode(PRODUKT_OF));
 			addChild(n, var_val());
+			cur++;
 			if(curType == TOK_AN){
 				addChild(n, createNode(AN));
 				addChild(n, var_val());	
 			} else {
-				syntaxError("Expected AN in binary arithmetic PRODUKT OF");
+				syntaxError("Expected arg separator AN in binary arithmetic");
 			}
 			break;
 		case TOK_QUOSHUNT_OF:
 			addChild(n, createNode(QUOSHUNT_OF));
 			addChild(n, var_val());
+			cur++;
 			if(curType == TOK_AN){
 				addChild(n, createNode(AN));
 				addChild(n, var_val());	
 			} else {
-				syntaxError("Expected AN in binary arithmetic QUOSHUNT OF");
+				syntaxError("Expected arg separator AN in binary arithmetic");
 			}
 			break;
 		case TOK_MOD_OF:
 			addChild(n, createNode(MOD_OF));
 			addChild(n, var_val());
+			cur++;
 			if(curType == TOK_AN){
 				addChild(n, createNode(AN));
 				addChild(n, var_val());	
 			} else {
-				syntaxError("Expected AN in binary arithmetic MOD OF");
+				syntaxError("Expected arg separator AN in binary arithmetic");
 			}
 			break;
+		default:
 	}
 
 	return n;
 }
 
-ast_node* expr(){
-	ast_node *n, *s;
-	n = createNode(EXPR);
-	cur++;
+/* Rules: 
+	<fin_boolean> ::= NOT <var_val> | (BOTH OF | EITHER OF | WON OF) <var_val> AN <var_val>
 
-	/* <arithmetic> ::= () <var_value> AN <var_value>*/
-	if(curType == TOK_SUM_OF || curType == TOK_DIFF_OF || curType == TOK_PRODUKT_OF || curType == TOK_QUOSHUNT_OF || curType == TOK_MOD_OF){
-		addChild(n, arithmetic);
-	}
+*/
+ast_node* boolean(){
+	ast_node* n;
+	n = createNode(BOOLEAN);
 	switch(curType){
-		// case TOK_SUM_OF:
-		// 	addChild(n, arithmetic);
-		// 	break;
-		// case TOK_DIFF_OF:
-		// 	addChild(n, createNode(DIFF_OF));
-		// 	addChild(n, var_val());
-		// 	addChild(n, createNode(AN));
-		// 	addChild(n, var_val());		
-		// 	break;
-		// case TOK_PRODUKT_OF:
-		// 	addChild(n, createNode(PRODUKT_OF));
-		// 	addChild(n, var_val());
-		// 	addChild(n, createNode(AN));
-		// 	addChild(n, var_val());
-		// 	break;
-		// case TOK_QUOSHUNT_OF:
-		// 	addChild(n, createNode(QUOSHUNT_OF));
-		// 	addChild(n, var_val());
-		// 	addChild(n, createNode(AN));
-		// 	addChild(n, var_val());
-		// 	break;
-		// case TOK_MOD_OF:
-		// 	addChild(n, createNode(MOD_OF));
-		// 	addChild(n, var_val());
-		// 	addChild(n, createNode(AN));
-		// 	addChild(n, var_val());
-		// 	break;
-		/* <boolean> ::= <fin_boolean> | <inf_boolean>*/
-		/* <fin_boolean> ::= NOT <var_val> | (BOTH OF | EITHER OF | WON OF) <var_val> AN <var_val>*/
 		case TOK_NOT:
-			addChild(n, createNode(MOD_OF));
+			addChild(n, createNode(NOT));
 			addChild(n, var_val());
 			break;
 		case TOK_BOTH_OF:
 			addChild(n, createNode(BOTH_OF));
 			addChild(n, var_val());
-			addChild(n, createNode(AN));
-			addChild(n, var_val());
+			cur++;
+			if(curType == TOK_AN){
+				addChild(n, createNode(AN));
+				addChild(n, var_val());
+			} else {
+				syntaxError("Expected arg separator AN in binary boolean");
+			}
 			break;
 		case TOK_EITHER_OF:
 			addChild(n, createNode(EITHER_OF));
 			addChild(n, var_val());
-			addChild(n, createNode(AN));
-			addChild(n, var_val());
+			cur++;
+			if(curType == TOK_AN){
+				addChild(n, createNode(AN));
+				addChild(n, var_val());
+			} else {
+				syntaxError("Expected arg separator AN in binary boolean");
+			}
 			break;
 		case TOK_WON_OF:
 			addChild(n, createNode(WON_OF));
 			addChild(n, var_val());
-			addChild(n, createNode(AN));
-			addChild(n, var_val());
+			cur++;
+			if(curType == TOK_AN){
+				addChild(n, createNode(AN));
+				addChild(n, var_val());
+			} else {
+				syntaxError("Expected arg separator AN in binary boolean");
+			}
 			break;
-		/* <inf_boolean> ::= (ALL OF | ANY OF) <inf_boolean_arg> AN <inf_boolean_arg> AN <inf_last_arg>*/
-		// case TOK_ALL_OF:
-		// 	addChild(n, createNode(ALL_OF));
-		// 	addChild(n, var_val());
-		// 	addChild(n, createNode(AN));
-		// 	addChild(n, var_val());
-		// 	break;
-		// case TOK_ANY_OF:
-		// 	addChild(n, createNode(ANY_OF));
-		// 	addChild(n, var_val());
-		// 	addChild(n, createNode(AN));
-		// 	addChild(n, var_val());
-		// 	break;
-		/* <comparison> ::= (BOTH SAEM | BOTH DIFFRINT) <var_val> AN <var_val>*/
+		// MISSING INFINITE BOOLEAN CASES
+	}
+	return n;
+}
+
+/* <relational> ::= <var_val> | (BIGGR OF | SMALLR OF) <valr_val> AN <var_val>*/
+ast_node* relational(){
+	ast_node* n;
+	n = createNode(RELATIONAL);
+	cur++;
+	switch(curType){
+		case TOK_BIGGR_OF:
+			addChild(n, createNode(BIGGR_OF));
+			addChild(n, var_val());
+			cur++;
+			if(curType == TOK_AN){
+				addChild(n, createNode(AN));
+				addChild(n, var_val());
+			} else {
+				syntaxError("Expected arg separator AN in binary relational");
+			}
+			break;
+		case TOK_SMALLR_OF:
+			addChild(n, createNode(SMALLR_OF));
+			addChild(n, var_val());
+			cur++;
+			if(curType == TOK_AN){
+				addChild(n, createNode(AN));
+				addChild(n, var_val());
+			} else {
+				syntaxError("Expected arg separator AN in binary relational");
+			}	
+			break;
+	}
+	return n;
+}
+
+/* Rules: <comparison> ::= (BOTH SAEM | BOTH DIFFRINT) <var_val> AN <var_val>*/
+ast_node* comparison(){
+	ast_node* n;
+	n = createNode(COMPARISON);
+	switch(curType){
 		case TOK_BOTH_SAEM:
 			addChild(n, createNode(BOTH_SAEM));
 			addChild(n, var_val());
 			cur++;
-			addChild(n, createNode(AN));
-			addChild(n, var_val());
+			if(curType == TOK_AN){
+				addChild(n, createNode(AN));
+				addChild(n, relational());
+			} else {
+				syntaxError("Expected arg separator AN in binary comparison");
+			}
 			break;
 		case TOK_DIFFRINT:
 			addChild(n, createNode(DIFFRINT));
 			addChild(n, var_val());
-			addChild(n, createNode(AN));
-			addChild(n, var_val());
+			cur++;
+			if(curType == TOK_AN){
+				addChild(n, createNode(AN));
+				addChild(n, relational());
+			} else {
+				syntaxError("Expected arg separator AN in binary comparison");
+			}
 			break;
-		/* <concatenation> ::= SMOOSH <var_value> <concat_operand>*/
-		case TOK_SMOOSH:
-			addChild(n, createNode(SMOOSH));
-			addChild(n, var_val());
-			addChild(n, concat_operand());
-
-			break;
-		// <typecasting>
-		case TOK_MAEK:
-			break;
-		default:
-			printf("Reached default of expr\n");
-			syntaxError("Expected expr keyword");
 	}
+	return n;
+}
 
-	return 0;
+ast_node* concatenation(){
+	ast_node* n = createNode(CONCATENATION);
+	addChild(n, var_val());
+	addChild(n, concat_operand());
+	
+	return n;
 }
 
 ast_node* concat_operand(){
@@ -357,8 +370,95 @@ ast_node* concat_operand(){
 	cur++;
 	if(curType == TOK_AN){
 		addChild(n, createNode(AN));
-		
+		addChild(n, var_val());		
+	} else {
+		syntaxError("Expected arg separator AN in concatenation");
 	}
+	// pending infinite arity
+}
+
+/* <typecasting> ::= MAEK varident A type | varident IS NOW A type | varident R MAEK varident type */
+ast_node* typecasting(){
+	ast_node* n = createNode(TYPECASTING), *s;
+	
+	if(curType == TOK_MAEK){
+		addChild(n, createNode(MAEK));
+		cur++;
+		if(curType == TOK_IDENT){
+			s = createNode(IDENT);
+			s->string_val = (*cur)->lexeme;
+			addChild(n, s);
+			cur++;
+			if(curType == TOK_A){
+				addChild(n, createNode(A));
+				cur++;
+				if(curType == TOK_TYPE){
+					s = createNode(TYPE);
+					s->string_val = (*cur)->lexeme;
+					addChild(n, s);
+				} else {
+					syntaxError("Expected type literal after A");
+				}
+			} else {
+				syntaxError("Expected type specifier A in typecast statement");
+			}
+		} else {
+			syntaxError("Expected identifier after MAEK");
+		}
+	} else { // must follow either of (varident IS NOW A type | varident R MAEK varident type)
+		s = createNode(IDENT);
+		s->string_val = (*cur)->lexeme;
+		addChild(n, s);
+		cur++;
+		if(curType == TOK_IS_NOW_A){
+			addChild(n, createNode(IS_NOW_A));
+			cur++;
+			if(curType == TOK_TYPE){
+				s = createNode(TYPE);
+				s->string_val = (*cur)->lexeme;
+				addChild(n, s);
+			} else {
+				syntaxError("Expected type literal after A");
+			}
+		} else {
+
+		}
+	}
+	return n;
+}
+
+
+ast_node* expr(){
+	ast_node *n, *s;
+	n = createNode(EXPR);
+	cur++;
+
+	// <arithmetic>
+	if(curType == TOK_SUM_OF || curType == TOK_DIFF_OF || curType == TOK_PRODUKT_OF || curType == TOK_QUOSHUNT_OF || curType == TOK_MOD_OF){
+		addChild(n, arithmetic());
+	}
+
+	// <boolean>
+	if(curType == TOK_NOT || curType == TOK_BOTH_OF || curType == TOK_EITHER_OF || curType == TOK_WON_OF || curType == TOK_ALL_OF || curType == TOK_ANY_OF){
+		addChild(n, boolean());
+	}
+
+	// <comparison>
+	if(curType == TOK_BOTH_SAEM|| curType == TOK_DIFFRINT){
+		addChild(n, comparison());
+	}
+
+	// <concatenation>
+	if(curType == TOK_SMOOSH){
+		addChild(n, concatenation());
+	}
+
+	// <typecasting>, does lookahead to distinguish from assignment which also has a rule starting with varident
+	if(curType == TOK_MAEK || (curType == TOK_IDENT && nextType == TOK_IS_NOW_A) || (curType == TOK_IDENT && nextType == TOK_R && (*cur+2)->type == TOK_MAEK)){
+		addChild(n, typecasting());
+	}
+
+	return 0;
 }
 
 ast_node* single_stmt(){ 
@@ -377,8 +477,8 @@ ast_node* single_stmt(){
 			addChild(n, input());
 			break;
 		case TOK_IDENT: /* varident R <var_val>*/
-			addChild(n, assignment());
-			break;
+			if(nextType == TOK_R) addChild(n, assignment());
+
 		case TOK_I_IZ: /* <function_call> ::= I IZ funident MKAY | I IZ funident <argument> MKAY*/
 			addChild(n, function_call());
 			break;
@@ -388,6 +488,7 @@ ast_node* single_stmt(){
 		// expr pa kulang !!!
 		default:
 			printf("Reached end of single_stmt\n");
+			// try compound addChild()
 	}
 
 	if((*cur++)->type != TOK_KTHXBYE){	// end of program not encountered, check for <stmt> ::= <single_stmt> <stmt>
@@ -408,6 +509,13 @@ ast_node* compound_stmt(){
 ast_node* stmt(){
 	ast_node* n, *single, *compound;
 	n = createNode(STMT);
+
+	/*
+	do {
+		if ()
+	
+	}
+	*/
 	printf("IN STMT\n");
 		single = single_stmt();
 		compound = compound_stmt();
@@ -429,7 +537,7 @@ ast_node* program(Token** tokenList, int numTokens){
 				addChild(n, var_dec());
 			} else if((*cur)->type == TOK_BUHBYE){		// No vars declared
 				addChild(n, createNode(BUHBYE));
-				if((*cur++)->type != TOK_KTHXBYE){		// Program end keyword KTHXBYE not encountered, check if statement
+				if((*cur+1)->type != TOK_KTHXBYE){		// Program end keyword KTHXBYE not encountered, check if statement
 					printf("FOUND STATEMENT\n");
 					addChild(n, stmt());
 					addChild(n, createNode(KTHXBYE));
