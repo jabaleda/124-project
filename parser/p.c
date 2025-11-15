@@ -431,7 +431,7 @@ ast_node* typecasting(){
 ast_node* expr(){
 	ast_node *n, *s;
 	n = createNode(EXPR);
-	cur++;
+	// cur++;
 
 	// <arithmetic>
 	if(curType == TOK_SUM_OF || curType == TOK_DIFF_OF || curType == TOK_PRODUKT_OF || curType == TOK_QUOSHUNT_OF || curType == TOK_MOD_OF){
@@ -466,7 +466,7 @@ ast_node* single_stmt(){
 	ast_node *n, *s;
 	n = createNode(SINGLE_STMT);
 	// cur++;
-	printf("IN SINGLE_STMT, cur = %d\n", curType);
+	printf("IN SINGLE_STMT, cur = %d, curlex: %s\n", curType, (*cur)->lexeme);
 
 	switch(curType){
 		case TOK_VISIBLE:	/* VISIBLE <var_val>*/
@@ -477,21 +477,27 @@ ast_node* single_stmt(){
 			addChild(n, input());
 			break;
 		case TOK_IDENT: /* varident R <var_val>*/
-			if(nextType == TOK_R) addChild(n, assignment());
-
+			printf("ASSIGN FOUND\n");
+			if(nextType == TOK_R){
+				addChild(n, assignment());
+			} else {
+				printf("NOT ASSIGN\n");
+			}
+			break;
 		case TOK_I_IZ: /* <function_call> ::= I IZ funident MKAY | I IZ funident <argument> MKAY*/
 			addChild(n, function_call());
 			break;
 		case TOK_GTFO:
 			addChild(n, createNode(GTFO));
 			break;
-		// expr pa kulang !!!
 		default:
 			printf("Reached end of single_stmt\n");
+			addChild(n, expr());
 			// try compound addChild()
 	}
 
-	if((*cur++)->type != TOK_KTHXBYE){	// end of program not encountered, check for <stmt> ::= <single_stmt> <stmt>
+	cur++;
+	if(curType != TOK_KTHXBYE){	// end of program not encountered, check for <stmt> ::= <single_stmt> <stmt>
 		s = stmt();
 		if(s != NULL){
 			addChild(n, s);
@@ -502,25 +508,34 @@ ast_node* single_stmt(){
 
 ast_node* compound_stmt(){
 	ast_node* n;
+	n = createNode(COMPOUND_STMT);
+
+	switch(curType){
+
+	}
 
 	return NULL;
 }
 
 ast_node* stmt(){
-	ast_node* n, *single, *compound;
+	ast_node* n, *s;
 	n = createNode(STMT);
-
-	/*
-	do {
-		if ()
-	
-	}
-	*/
 	printf("IN STMT\n");
-		single = single_stmt();
-		compound = compound_stmt();
-		if(single != NULL) addChild(n, single);
-		if(compound != NULL) addChild(n, single);
+	printf("stmt curlex: %s\n", string_ver[(*cur)->type]);
+
+	if(curType != TOK_KTHXBYE) cur++;
+
+	if( /*curType != || para sa if*/ curType != TOK_WTF || curType != TOK_IM_IN_YR|| curType != TOK_HOW_IZ_I){
+		 addChild(n, single_stmt());
+	} else {
+		s = compound_stmt();
+	}
+
+	// single = single_stmt();
+	// compound = compound_stmt();
+	// if(single != NULL) addChild(n, single);
+	// if(compound != NULL) addChild(n, single);
+	printf("RETURNING STMT\n");
 	return n;
 
 }
@@ -537,7 +552,7 @@ ast_node* program(Token** tokenList, int numTokens){
 				addChild(n, var_dec());
 			} else if((*cur)->type == TOK_BUHBYE){		// No vars declared
 				addChild(n, createNode(BUHBYE));
-				if((*cur+1)->type != TOK_KTHXBYE){		// Program end keyword KTHXBYE not encountered, check if statement
+				if((*cur+1)->type != TOK_KTHXBYE){		// next token in list is not KTHXBYE, check if statement
 					printf("FOUND STATEMENT\n");
 					addChild(n, stmt());
 					addChild(n, createNode(KTHXBYE));
@@ -566,15 +581,45 @@ void visit(ast_node* node){
 	}
 }
 
-void listChildren(ast_node* node){
+void visit2(ast_node* node, Symbol p, int pos){
+	if(pos == 'F'){ // first child
+		printf("(Children of %s: %s ", string_ver[p], string_ver[node->type]);
+	} else if(pos == 'L'){ // last child
+		printf("%s)\n", string_ver[node->type]);
+	} else if(pos == 'S') { // only child
+		printf("(Child of %s: %s )\n", string_ver[p], string_ver[node->type]);
+	} else if(p == -1){  // node being visited is root
+		printf("ROOT NODE: PROG\n");
+	} else {
+		printf(" %s ", string_ver[node->type]);
+	}
+	
+	if(node->numChildren == 1){
+		visit2(node->children[0], node->type, 'S');
+		return;
+	}
+
 	for(int i = 0; i < node->numChildren; i++){
-		printf("Type of child node: %d\n", node->children[i]->type);
+		if(i == 0){
+			visit2(node->children[i], node->type, 'F');
+		} else if(i == node->numChildren-1) {
+			visit2(node->children[i], node->type, 'L');
+		} else {
+			visit2(node->children[i], 0, i);
+		}
+	}
+}
+
+void listChildren(ast_node* node){
+	printf("Children of %s\n", string_ver[node->type]);
+	for(int i = 0; i < node->numChildren; i++){
+		printf("\tChild [%d] type: %s\n", i, string_ver[node->children[i]->type]);
 	}
 }
 
 
 int main(){
-	int numTokens = 8;
+	int numTokens = 6;
 	Token** tokenList = malloc(sizeof(Token*) * numTokens);
 	tokenList[0] = createToken(TOK_HAI);
 	tokenList[1] = createToken(TOK_WAZZUP);
@@ -582,11 +627,23 @@ int main(){
 	tokenList[3] = createToken(TOK_VISIBLE);
 	tokenList[4] = createToken(TOK_IDENT);
 	tokenList[4]->lexeme = "A";
-	tokenList[5] = createToken(TOK_VISIBLE);
-	tokenList[6] = createToken(TOK_IDENT);
-	tokenList[6]->lexeme = "B";
-	tokenList[7] = createToken(TOK_KTHXBYE);
+	tokenList[5] = createToken(TOK_KTHXBYE);
+
+	// int numTokens = 8;
+	// Token** tokenList = malloc(sizeof(Token*) * numTokens);
+	// tokenList[0] = createToken(TOK_HAI);
+	// tokenList[1] = createToken(TOK_WAZZUP);
+	// tokenList[2] = createToken(TOK_BUHBYE);
+	// tokenList[3] = createToken(TOK_VISIBLE);
+	// tokenList[4] = createToken(TOK_IDENT);
+	// tokenList[4]->lexeme = "A";
+	// tokenList[5] = createToken(TOK_VISIBLE);
+	// tokenList[6] = createToken(TOK_IDENT);
+	// tokenList[6]->lexeme = "B";
+	// tokenList[7] = createToken(TOK_KTHXBYE);
 	
+
+
 	cur = tokenList;
 
 	// for(int i = 0; i < numTokens; i++){
@@ -595,9 +652,26 @@ int main(){
 	// }
 	ast_node* root = program(tokenList, numTokens);
 
+	listChildren(root);
+	listChildren(root->children[0]);
+	listChildren(root->children[1]);
+	listChildren(root->children[2]); //stmt
+	printf("stmt has %d c",root->children[2]->numChildren);
+	listChildren(root->children[2]->children[0]);
+	
+	printf("\n===========================\n");
 	printf("Post-order traversal of AST\n");
-	visit(root);
-	printf("\n");
+	printf("===========================\n");
+
+	// visit(root);
+	// printf("\n");
+
+	// printf("\n");
+	visit2(root, -1, 'X');
+	// // visit(root);
+
+	// printf("\n");
+	
 	// printf("Root's Children:\n");
 // 	listChildren(root);
 // 	listChildren(root->children[2]);
