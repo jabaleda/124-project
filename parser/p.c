@@ -6,13 +6,37 @@
 	Notes/Plans/WIP: 
 		1) pagsamahin na parts ng syntax and semantic analysis
 			ex: encountered valid var_assign -> add to a symbol table
+			pros: catch agad semantic errors
+			cons: hirap debug; sayang pag may error
 		2) no verbose error message with line + parser terminates when encountering syntax error
+			pros: 
+			cons: premature exit that prevents flagging of other syntax errors further in
 		3) magulo kung san nagiincrement ng cur in some places; switches between before calling function ng symbols or within (necessary for now)
+		4) consider using variable length argument for adding child node to avoid 
+			multiple addChild(node, child) statements (see expr() switch cases)
+		5) does not check kung may linebreak after statements
+			after a statement:
+			- checks if there are more statements
+			- checks for KTHXBYE (assumes no more statements then error pag may token pa past KTHXBYE)
 */
 
 #define curType (*cur)->type
 #define nextType (*cur++)->type
 Token** cur; // Pointer to token list, change type later to token pag nagana na lexer!!!
+
+// int isIdOrLiteral(TokenType t){
+// 	if(t == TOK_IDENT || t == TOK_INTEGER|| t == TOK_FLOAT || t == TOK_STRING || TOK_TYPE) return 1;
+// 	return 0;
+// }
+
+// int isVarVal(TokenType t){
+// 	if(t == TOK_IDENT || t == TOK_INTEGER|| t == TOK_FLOAT || t == TOK_STRING || TOK_TYPE){
+
+// 	} else {
+		
+// 	}
+// }
+
 
 Token* createToken(TokenType type){
 	Token* t = malloc(sizeof(Token));
@@ -40,18 +64,12 @@ void syntaxError(char *msg){
 /*
 	Finite Automata? to parse token list and build AST
 */
-
-
 ast_node* var_dec(){
 
 }
 
-ast_node* expr(){
-
-}
-
 ast_node* var_val(){
-	ast_node* n;
+	ast_node* n, *s;
 	cur++;
 	printf(" IN VAR_VAL, cur = %d\n", curType);
 	switch(curType){
@@ -81,10 +99,7 @@ ast_node* var_val(){
 			break;
 		default:
 			printf("Reached default of var_val\n"); // !!!
-			// try expr();
-			// not expr
-			// return null?
-			return NULL;
+			addChild(n, expr());
 	}
 	return n;
 }
@@ -148,26 +163,201 @@ ast_node* function_call(){
 				if(s != NULL){
 					addChild(n, s);
 				} else {
-					// error
+					syntaxError("Expected valid function arg");
 				}
 				cur++;
 				if(curType == TOK_AN){
 					addChild(n, createNode(AN));
 				} else {
-					// error
+					syntaxError("Expected AN arg separator");
 				}
 			}
 			if(curType == TOK_MKAY){
 				addChild(n, createNode(MKAY));
 			} else {
-				// error
+				syntaxError("Expected end of function_call MKAY");
 			}
-
 		} else {
-			// error
+			syntaxError("Expected MKAY or arg declarations YR");
 		}
 	} else {
 		syntaxError("Expected identifier after I IZ");
+	}
+	return n;
+}
+
+ast_node* arithmetic(){
+	ast_node* n;
+	n = createNode(ARITHMETIC);
+	switch(curType){
+		case TOK_SUM_OF:
+			addChild(n, createNode(SUM_OF));
+			addChild(n, var_val());
+			cur++;
+			if(curType == TOK_AN){
+				addChild(n, createNode(AN));
+				addChild(n, var_val());	
+			} else {
+				syntaxError("Expected AN in binary arithmetic SUM OF");
+			}
+			break;
+		case TOK_DIFF_OF:
+			addChild(n, createNode(DIFF_OF));
+			addChild(n, var_val());
+			if(curType == TOK_AN){
+				addChild(n, createNode(AN));
+				addChild(n, var_val());	
+			} else {
+				syntaxError("Expected arg separator AN in binary arithmetic DIFF OF");
+			}
+			break;
+		case TOK_PRODUKT_OF:
+			addChild(n, createNode(PRODUKT_OF));
+			addChild(n, var_val());
+			if(curType == TOK_AN){
+				addChild(n, createNode(AN));
+				addChild(n, var_val());	
+			} else {
+				syntaxError("Expected AN in binary arithmetic PRODUKT OF");
+			}
+			break;
+		case TOK_QUOSHUNT_OF:
+			addChild(n, createNode(QUOSHUNT_OF));
+			addChild(n, var_val());
+			if(curType == TOK_AN){
+				addChild(n, createNode(AN));
+				addChild(n, var_val());	
+			} else {
+				syntaxError("Expected AN in binary arithmetic QUOSHUNT OF");
+			}
+			break;
+		case TOK_MOD_OF:
+			addChild(n, createNode(MOD_OF));
+			addChild(n, var_val());
+			if(curType == TOK_AN){
+				addChild(n, createNode(AN));
+				addChild(n, var_val());	
+			} else {
+				syntaxError("Expected AN in binary arithmetic MOD OF");
+			}
+			break;
+	}
+
+	return n;
+}
+
+ast_node* expr(){
+	ast_node *n, *s;
+	n = createNode(EXPR);
+	cur++;
+
+	/* <arithmetic> ::= () <var_value> AN <var_value>*/
+	if(curType == TOK_SUM_OF || curType == TOK_DIFF_OF || curType == TOK_PRODUKT_OF || curType == TOK_QUOSHUNT_OF || curType == TOK_MOD_OF){
+		addChild(n, arithmetic);
+	}
+	switch(curType){
+		// case TOK_SUM_OF:
+		// 	addChild(n, arithmetic);
+		// 	break;
+		// case TOK_DIFF_OF:
+		// 	addChild(n, createNode(DIFF_OF));
+		// 	addChild(n, var_val());
+		// 	addChild(n, createNode(AN));
+		// 	addChild(n, var_val());		
+		// 	break;
+		// case TOK_PRODUKT_OF:
+		// 	addChild(n, createNode(PRODUKT_OF));
+		// 	addChild(n, var_val());
+		// 	addChild(n, createNode(AN));
+		// 	addChild(n, var_val());
+		// 	break;
+		// case TOK_QUOSHUNT_OF:
+		// 	addChild(n, createNode(QUOSHUNT_OF));
+		// 	addChild(n, var_val());
+		// 	addChild(n, createNode(AN));
+		// 	addChild(n, var_val());
+		// 	break;
+		// case TOK_MOD_OF:
+		// 	addChild(n, createNode(MOD_OF));
+		// 	addChild(n, var_val());
+		// 	addChild(n, createNode(AN));
+		// 	addChild(n, var_val());
+		// 	break;
+		/* <boolean> ::= <fin_boolean> | <inf_boolean>*/
+		/* <fin_boolean> ::= NOT <var_val> | (BOTH OF | EITHER OF | WON OF) <var_val> AN <var_val>*/
+		case TOK_NOT:
+			addChild(n, createNode(MOD_OF));
+			addChild(n, var_val());
+			break;
+		case TOK_BOTH_OF:
+			addChild(n, createNode(BOTH_OF));
+			addChild(n, var_val());
+			addChild(n, createNode(AN));
+			addChild(n, var_val());
+			break;
+		case TOK_EITHER_OF:
+			addChild(n, createNode(EITHER_OF));
+			addChild(n, var_val());
+			addChild(n, createNode(AN));
+			addChild(n, var_val());
+			break;
+		case TOK_WON_OF:
+			addChild(n, createNode(WON_OF));
+			addChild(n, var_val());
+			addChild(n, createNode(AN));
+			addChild(n, var_val());
+			break;
+		/* <inf_boolean> ::= (ALL OF | ANY OF) <inf_boolean_arg> AN <inf_boolean_arg> AN <inf_last_arg>*/
+		// case TOK_ALL_OF:
+		// 	addChild(n, createNode(ALL_OF));
+		// 	addChild(n, var_val());
+		// 	addChild(n, createNode(AN));
+		// 	addChild(n, var_val());
+		// 	break;
+		// case TOK_ANY_OF:
+		// 	addChild(n, createNode(ANY_OF));
+		// 	addChild(n, var_val());
+		// 	addChild(n, createNode(AN));
+		// 	addChild(n, var_val());
+		// 	break;
+		/* <comparison> ::= (BOTH SAEM | BOTH DIFFRINT) <var_val> AN <var_val>*/
+		case TOK_BOTH_SAEM:
+			addChild(n, createNode(BOTH_SAEM));
+			addChild(n, var_val());
+			cur++;
+			addChild(n, createNode(AN));
+			addChild(n, var_val());
+			break;
+		case TOK_DIFFRINT:
+			addChild(n, createNode(DIFFRINT));
+			addChild(n, var_val());
+			addChild(n, createNode(AN));
+			addChild(n, var_val());
+			break;
+		/* <concatenation> ::= SMOOSH <var_value> <concat_operand>*/
+		case TOK_SMOOSH:
+			addChild(n, createNode(SMOOSH));
+			addChild(n, var_val());
+			addChild(n, concat_operand());
+
+			break;
+		// <typecasting>
+		case TOK_MAEK:
+			break;
+		default:
+			printf("Reached default of expr\n");
+			syntaxError("Expected expr keyword");
+	}
+
+	return 0;
+}
+
+ast_node* concat_operand(){
+	ast_node* n;
+	cur++;
+	if(curType == TOK_AN){
+		addChild(n, createNode(AN));
+		
 	}
 }
 
@@ -187,17 +377,19 @@ ast_node* single_stmt(){
 			addChild(n, input());
 			break;
 		case TOK_IDENT: /* varident R <var_val>*/
-			addChild(n, createNode(IDENT));
+			addChild(n, assignment());
 			break;
 		case TOK_I_IZ: /* <function_call> ::= I IZ funident MKAY | I IZ funident <argument> MKAY*/
-			addChild(n, createNode(I_IZ));
+			addChild(n, function_call());
 			break;
+		case TOK_GTFO:
+			addChild(n, createNode(GTFO));
+			break;
+		// expr pa kulang !!!
 		default:
 			printf("Reached end of single_stmt\n");
-			
-
-
 	}
+
 	if((*cur++)->type != TOK_KTHXBYE){	// end of program not encountered, check for <stmt> ::= <single_stmt> <stmt>
 		s = stmt();
 		if(s != NULL){
