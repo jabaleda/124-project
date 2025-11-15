@@ -279,6 +279,7 @@ typedef struct {
 } Token;
 
 typedef struct ast_node{
+	int node_id;
 	TokenType type;
 	union {
 		float num_val; // for numeric value ng literal?
@@ -300,16 +301,18 @@ ast_node* var_dec();
 ast_node* print();
 ast_node* input();
 ast_node* expr();
-// ast_node* arithmetic();
-// ast_node* boolean();
+ast_node* arithmetic();
+ast_node* boolean();
 ast_node* concat_operand();
 ast_node* comparison();
 ast_node* relational();
 ast_node* typecasting();
 ast_node* assignment();
-// ast_node* ;
-// ast_node* ;
-// ast_node* ;
-// ast_node* ;
+ast_node* switch_case();
+ast_node* case_block();
+ast_node* default_block();
+ast_node* loop();
+ast_node* function_definition();
+ast_node* argument();
 // ast_node* ;
 // ast_node* ;
