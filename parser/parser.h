@@ -62,6 +62,9 @@ typedef enum{
 	TOK_IM_OUTTA_YR,
 	TOK_HOW_IZ_I,
 
+	//
+	TOK_IF_U_SAY_SO
+
 } TokenType;
 
 
@@ -133,6 +136,9 @@ typedef enum{
     IM_IN_YR,
     IM_OUTTA_YR,
     HOW_IZ_I,
+
+	//
+	IF_U_SAY_SO,
 
 	// Non-terminals
 	PROG,
@@ -313,6 +319,10 @@ ast_node* case_block();
 ast_node* default_block();
 ast_node* loop();
 ast_node* function_definition();
+ast_node* parameter();
 ast_node* argument();
+ast_node* if_else();
+ast_node* branches_block();
+
 // ast_node* ;
 // ast_node* ;

@@ -3,7 +3,7 @@
 #include "parser.h"
 
 /*
-	Notes/Plans/WIP: (coding ts without testing...)
+	Parser Notes/Plans/WIP: (coding ts without testing...)
 		IMPORTANT: curType is compared against TOKENTYPES (prefixed with TOK_) and not SYMBOLS
 				so sa mga pagcheck ng next token, make sure may TOK_
 				opposite naman when creating node using createNode(Symbol s), 
@@ -30,6 +30,29 @@
 		8) something sa terminals
 			ex: for a <var_val> that evaluates to INTEGER node should it have a child with no type and only a value
 				example value = 5: para maproduce sa tree na <var_val> -> INTEGER -> 5
+		9) on if-else: first of production rule looks for <expr> but checking
+			for if-else atm does not look for expr and only looks for O RLY?
+			possible workaround, if O RLY? is found, check if IT variable has value?? but
+				this means O RLY? would work even if the expression it uses as a condition
+				does not come directly before it and uses the result of some past
+				expr
+		
+
+*/
+
+/*
+	Note on grammar: some production rules seem unnecessary
+		ex: <break_choice> expanding just to TIL or WILE
+		and may be implemented without the abstraction
+	change to var_dec
+	var_dec ::= I HAS A varident | I HAS A varident ITZ <var_value>
+				I HAS A varident <var_dec> | I HAS A varident ITZ <var_value> <var_dec>
+*/
+
+/*
+	Try to implement bonuses:
+		1) MEBBE clause (else if) in if-else
+		2) I *think* gagana if-else nesting based sa grammar
 */
 
 #define curType (*cur)->type
@@ -65,7 +88,22 @@ void syntaxError(char *msg){
 	Finite Automata? to parse token list and build AST
 */
 ast_node* var_dec(){
-
+	ast_node* n = createNode(VAR_DEC), *s;
+	addChild(n, createNode(I_HAS_A));
+	do{
+		cur++;
+		if(curType == TOK_IDENT){
+			s = createNode(IDENT);
+			s->string_val = (*cur)->lexeme;
+			addChild(n, s);
+			if(nextType == TOK_ITZ){
+				cur++;
+				addChild(n, createNode(ITZ));
+				addChild(n, var_val());
+			}
+		}
+		cur++;
+	} while(curType == TOK_I_HAS_A);
 }
 
 ast_node* var_val(){
@@ -367,22 +405,25 @@ ast_node* comparison(){
 
 ast_node* concatenation(){
 	ast_node* n = createNode(CONCATENATION);
+	addChild(n, createNode(SMOOSH));
 	addChild(n, var_val());
 	addChild(n, concat_operand());
-	
 	return n;
 }
 
 ast_node* concat_operand(){
 	ast_node* n;
-	cur++;
-	if(curType == TOK_AN){
-		addChild(n, createNode(AN));
-		addChild(n, var_val());		
-	} else {
-		syntaxError("Expected arg separator AN in concatenation");
+	if(nextType != TOK_AN){
+		syntaxError("Expected arg separator AN in SMOOSH");
 	}
-	// pending infinite arity
+
+	do{
+		cur++;
+		addChild(n, createNode(AN));
+		addChild(n, var_val());
+	}while(nextType == TOK_AN);
+
+	return n;
 }
 
 /* <typecasting> ::= MAEK varident A type | varident IS NOW A type | varident R MAEK varident type */
@@ -428,8 +469,26 @@ ast_node* typecasting(){
 			} else {
 				syntaxError("Expected type literal after A");
 			}
-		} else {
-
+		} else { // must be following R MAEK format
+			addChild(n, createNode(R));
+			cur++;
+			addChild(n, createNode(MAEK));
+			cur++;
+			if(curType == TOK_IDENT){
+				s = createNode(IDENT);
+				s->string_val = (*cur)->lexeme;
+				addChild(n, s);
+				cur++;
+				if(curType == TOK_TYPE){
+					s = createNode(TYPE);
+					s->string_val = (*cur)->lexeme;
+					addChild(n, s);
+				} else {
+					syntaxError("Expected type literal after identifier in typecast");
+				}
+			} else {
+				syntaxError("Expected identifier after typecast R MAEK");
+			}
 		}
 	}
 	return n;
@@ -518,9 +577,13 @@ ast_node* compound_stmt(){
 	ast_node* n;
 	n = createNode(COMPOUND_STMT);
 
-	switch(curType){
+	if(nextType == TOK_O_RLY){ // check for if
+		switch(curType){
 
-	}
+		}
+	} else {}
+
+
 
 	return NULL;
 }
@@ -529,118 +592,142 @@ ast_node* compound_stmt(){
 
 ast_node* switch_case(){
 	ast_node* n = createNode(SWITCH_CASE);
-	if(curType == TOK_WTF){
-		addChild(n, createNode(WTF));
+	addChild(n, createNode(WTF));
+	cur++;
+	if(curType == TOK_OMG){
 		addChild(n, case_block());
-		addChild(n, default_block());
-		addChild(n, createNode(OIC));
-		return n;
 	}
-
+	cur++;
+	if(curType == TOK_OMGWTF){ // check for default block keyword
+		addChild(n, default_block());
+	}
+	addChild(n, createNode(OIC));
+	return n;
 }
 
 ast_node* case_block(){
-	ast_node* n = createNode(CASE_BLOCK);
-	if(curType == TOK_OMG){
+	ast_node* n = createNode(CASE_BLOCK), *s;
+	do{
 		addChild(n, createNode(OMG));
 		cur++;
-		// curType == literal (WIP sa literal) !!!
-		// if(curType == INTEGER){
-		// 	addChild(n, /*literal*/);
-		// 	cur++;
-		// 	addChild(n, stmt());
-		// } else {
-		// 	syntaxError("Expected literal after OMG");
-		// }
-
-		if(nextType == TOK_GTFO){  // if case has break, consume and create node
+		switch(curType){
+			case TOK_INTEGER:
+				s = createNode(INTEGER);
+				s->num_val = atoi((*cur)->lexeme);
+				addChild(n, s);
+				cur++;
+				addChild(n, stmt());
+				break;
+			case TOK_FLOAT:
+				s = createNode(FLOAT);
+				s->num_val = atof((*cur)->lexeme);
+				addChild(n, s);
+				cur++;
+				addChild(n, stmt());
+				break;
+			case TOK_STRING:
+				s = createNode(INTEGER);
+				s->string_val = (*cur)->lexeme;
+				addChild(n, s);
+				cur++;
+				addChild(n, stmt());
+				break;
+			case TOK_TYPE:
+				s = createNode(INTEGER);
+				s->string_val = (*cur)->lexeme;
+				addChild(n, s);
+				cur++;
+				addChild(n, stmt());
+				break;
+			default:
+				syntaxError("Expected literal after OMG");
+		}
+		if(nextType == TOK_GTFO){  // if case_block has break, consume and create node
 			cur++;
 			addChild(n, createNode(GTFO));
-		}	
-	} else {
-		//
-	} 
+		}
+		cur++;	
+	} while(curType == TOK_OMG); // check for further case
 
 	return n;
 }
 
 ast_node* default_block(){
 	ast_node* n = createNode(DEFAULT_BLOCK);
-	if(curType == TOK_OMGWTF){
-		addChild(n, createNode(OMGWTF));
-		addChild(n, stmt());
-	}
+	addChild(n, createNode(OMGWTF));
+	addChild(n, stmt());
+	return n;
 }
 
 ast_node* loop(){
 	ast_node* n = createNode(LOOP), *s;
-	if(curType == TOK_IM_IN_YR){
-		addChild(n, createNode(IM_IN_YR));
+	addChild(n, createNode(IM_IN_YR));
+	cur++;
+	if(nextType == TOK_IDENT){
+		s = createNode(IDENT);
+		s->string_val = (*cur)->lexeme;
+		addChild(n, s);
+		// slight change to grammar, removing loop_var_operation
 		cur++;
-		if(nextType == TOK_IDENT){
+		if(curType == TOK_UPPIN){
+			addChild(n, createNode(UPPIN));		
+		} else if(curType == TOK_NERFIN){
+			addChild(n, createNode(NERFIN));
+		} else {
+			syntaxError("Expected UPPIN/NERFIN after loop identifier");
+		}
+		cur++;
+		if(curType == TOK_YR){
+			addChild(n, createNode(YR));
+		} else {
+			syntaxError("Expected YR in loop after UPPIN/NERFIN");
+		}
+		cur++;
+		if(curType == TOK_IDENT){
 			s = createNode(IDENT);
 			s->string_val = (*cur)->lexeme;
 			addChild(n, s);
-			// slight change to grammar, removing loop_var_operation
-			cur++;
-			if(curType == TOK_UPPIN){
-				addChild(n, createNode(UPPIN));		
-			} else if(curType == TOK_NERFIN){
-				addChild(n, createNode(NERFIN));
-			} else {
-				syntaxError("Expected UPPIN/NERFIN after loop identifier");
-			}
-			cur++;
-			if(curType == TOK_YR){
-				addChild(n, createNode(YR));
-			} else {
-				syntaxError("Expected YR in loop");
-			}
-			cur++;
-			if(curType == TOK_IDENT){
-				s = createNode(IDENT);
-				s->string_val = (*cur)->lexeme;
-				addChild(n, s);
-			} else {
-				syntaxError("Expected loop iterator identifier after UPPIN/NERFIN");
-			}
-			cur++;
-			// check for break_condition (TIL/WILE keyword)
-			// if either is found, check if break condition is boolean or comparison expr
-			if(curType == TOK_TIL){ 
-				addChild(n, createNode(TIL));
-				if(curType != TOK_BOTH_SAEM && curType != TOK_DIFFRINT){  // if not comparison
-					addChild(n, comparison());
-				} else { // must be boolean
-					addChild(n, boolean());
-				}
-				addChild(n, stmt());
-			} else if(curType == TOK_WILE){
-				addChild(n, createNode(WILE));
-				if(curType != TOK_BOTH_SAEM && curType != TOK_DIFFRINT){  // if not comparison
-					addChild(n, comparison());
-				} else { // must be boolean
-					addChild(n, boolean());
-				}
-				addChild(n, stmt());
-			} else{
-				addChild(n, stmt());
-			}
-			cur++;
-			if(curType == TOK_IM_OUTTA_YR){
-				addChild(n, createNode(IM_OUTTA_YR));
-			} else {
-				syntaxError("Expected loop exit keyword IM OUTTA YR");
-			}
-			cur++;
-			if(curType == TOK_IDENT){
-				s = createNode(IDENT);
-				s->string_val = (*cur)->lexeme;
-				addChild(n, s);
-			} else {
-				syntaxError("Expected loop identifier after IM OUTTA YR");
-			}
+		} else {
+			syntaxError("Expected loop iterator identifier after UPPIN/NERFIN");
 		}
+		cur++;
+		// check for break_condition (TIL/WILE keyword)
+		// if either is found, check if break condition is boolean or comparison expr
+		if(curType == TOK_TIL){ 
+			addChild(n, createNode(TIL));
+			if(curType != TOK_BOTH_SAEM && curType != TOK_DIFFRINT){  // if not comparison
+				addChild(n, comparison());
+			} else { // must be boolean
+				addChild(n, boolean());
+			}
+			addChild(n, stmt());
+		} else if(curType == TOK_WILE){
+			addChild(n, createNode(WILE));
+			if(curType != TOK_BOTH_SAEM && curType != TOK_DIFFRINT){  // if not comparison
+				addChild(n, comparison());
+			} else { // must be boolean
+				addChild(n, boolean());
+			}
+			addChild(n, stmt());
+		} else{
+			addChild(n, stmt());
+		}
+		cur++;
+		if(curType == TOK_IM_OUTTA_YR){
+			addChild(n, createNode(IM_OUTTA_YR));
+		} else {
+			syntaxError("Expected loop exit keyword IM OUTTA YR");
+		}
+		cur++;
+		if(curType == TOK_IDENT){
+			s = createNode(IDENT);
+			s->string_val = (*cur)->lexeme;
+			addChild(n, s);
+		} else {
+			syntaxError("Expected loop identifier after IM OUTTA YR");
+		}
+	} else {
+		syntaxError("Expected loop identifier after IM IN YR");
 	}
 
 	return n;
@@ -648,42 +735,72 @@ ast_node* loop(){
 
 ast_node* function_definition(){
 	ast_node* n = createNode(FUNCTION_DEFINITION), *s;
-	if(curType == TOK_HOW_IZ_I){
-		addChild(n, createNode(HOW_IZ_I));
-		cur++;
-		if(curType == TOK_IDENT){
-			if(curType == TOK_IDENT){
-				s = createNode(IDENT);
-				s->string_val = (*cur)->lexeme;
-				addChild(n, s);
-			} else {
-				syntaxError("Expected identifier after HOW IZ I");
-			}
-		}
-		cur++;
-		// Move below to argument
-		// check for function parameters
-		// while(curType == TOK_YR){ // might break, get back to this later !!!
-		// 	addChild(n, createNode(YR));
-		// 	cur++;
-		// 	if(curType == TOK_IDENT){
-		// 		if(curType == TOK_IDENT){
-		// 			s = createNode(IDENT);
-		// 			s->string_val = (*cur)->lexeme;
-		// 			addChild(n, s);
-		// 		} else {
-		// 			syntaxError("Expected param identifier after YR in function definition");
-		// 		}
-		// 	}
-		// 	cur++;
-		// 	if(curType == TOK_AN){
-		// 		addChild(n, createNode(AN));
-		// 	}
-		// }
+	addChild(n, createNode(HOW_IZ_I));
+	cur++;
+	if(curType == TOK_IDENT){
+		s = createNode(IDENT);
+		s->string_val = (*cur)->lexeme;
+		addChild(n, s);
+	} else {
+		syntaxError("Expected identifier after HOW IZ I");
 	}
+	if(nextType == TOK_YR){ // check for parameter
+		addChild(n, parameter());
+	}
+	addChild(n, stmt());
+	cur++;
+	if(curType == TOK_IF_U_SAY_SO){
+		addChild(n, createNode(IF_U_SAY_SO));
+	} else {
+		syntaxError("Expected function definition end IF U SAY SO");
+	}
+	return n;
 }
 
-ast_node* argument(){
+ast_node* parameter(){
+	ast_node* n = createNode(PARAMETER), *s;
+	do{
+		cur++;
+		addChild(n, createNode(YR));
+		cur++;
+		if(curType == TOK_IDENT){
+			s = createNode(IDENT);
+			s->string_val = (*cur)->lexeme;
+			addChild(n, s);
+		} else {
+			syntaxError("Expected param identifier after YR in function definition");
+		}
+	}while(nextType == TOK_YR);
+
+	return n;
+}
+
+// ast_node* if_else(){
+// 	ast_node* n = createNode(IF_ELSE);
+// 	addChild(n, createNode(O_RLY));
+// 	addChild(n, branches_block());
+// 	if(curType == TOK_OIC){
+// 		addChild(n, createNode(OIC));
+// 	} else {
+// 		syntaxError("Expected if block end OIC");
+// 	}
+// }
+
+ast_node* branches_block(){
+	ast_node *n;
+	cur++;
+	// check for if clause
+	if(curType == TOK_YA_RLY){
+		addChild(n, createNode(YA_RLY));	
+		addChild(n, stmt());
+		cur++;
+		// check for else clause
+		if(curType == TOK_NO_WAI){
+			addChild(n, createNode(NO_WAI));
+			addChild(n, stmt());
+		}	
+	}
+	cur++;
 
 }
 
@@ -695,10 +812,10 @@ ast_node* stmt(){
 
 	if(curType != TOK_KTHXBYE) cur++;
 
-	if( /*curType != || para sa if*/ curType != TOK_WTF || curType != TOK_IM_IN_YR|| curType != TOK_HOW_IZ_I){
-		 addChild(n, single_stmt());
+	if(/*curType != TOK_O_RLY || */ curType != TOK_WTF || curType != TOK_IM_IN_YR|| curType != TOK_HOW_IZ_I){
+		addChild(n, single_stmt());
 	} else {
-		s = compound_stmt();
+		addChild(n, compound_stmt());
 	}
 
 	// single = single_stmt();
@@ -718,8 +835,19 @@ ast_node* program(Token** tokenList, int numTokens){
 		if((*cur)->type == TOK_WAZZUP){
 			addChild(n, createNode(WAZZUP));
 			cur++;
-			if((*cur)->type == TOK_I_HAS_A){	// Found var dec statement
+			if(curType == TOK_I_HAS_A){	// Found var dec statement
 				addChild(n, var_dec());
+					if(curType == TOK_BUHBYE){
+					addChild(n, createNode(BUHBYE));
+					if((*cur+1)->type != TOK_KTHXBYE){		// next token in list is not KTHXBYE, check if statement
+						printf("FOUND STATEMENT\n");
+						addChild(n, stmt());
+						addChild(n, createNode(KTHXBYE));
+					} else {
+						addChild(n, createNode(KTHXBYE));
+						cur++;
+					}
+				}
 			} else if((*cur)->type == TOK_BUHBYE){		// No vars declared
 				addChild(n, createNode(BUHBYE));
 				if((*cur+1)->type != TOK_KTHXBYE){		// next token in list is not KTHXBYE, check if statement
