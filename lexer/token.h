@@ -134,6 +134,107 @@ char *keywords[] = {
     "IF U SAY SO"
 };
 
+// copied over from parser
+// delete later
+// para lang maprint ung token type
+char* string_ver[] = {
+	"INTEGER",
+	"FLOAT",
+	"STRING",
+	"BOOLEAN",
+	"TYPE",
+
+	"IDENT",
+
+	"HAI",
+	"KTHXBYE",
+	"WAZZUP",
+	"BUHBYE",
+	"ITZ",
+	"R",
+	"NOT",
+	"DIFFRINT",
+	"SMOOSH",
+	"MAEK",
+	"A",
+	"VISIBLE",
+	"GIMMEH",
+	"OIC",
+	"WTF",
+	"OMG",
+	"OMGWTF",
+	"UPPIN",
+	"NERFIN",
+	"YR",
+	"TIL",
+	"WILE",
+	"AN",
+	"GTFO",
+	"MKAY",
+
+	"SUM_OF",
+	"DIFF_OF",
+	"PRODUKT_OF",
+	"QUOSHUNT_OF",
+	"MOD_OF",
+	"BIGGR_OF",
+	"SMALLR_OF",
+	"BOTH_OF",
+	"EITHER_OF",
+	"WON_OF",
+	"ANY_OF",
+	"ALL_OF",
+	"BOTH_SAEM",
+	"O_RLY",
+	"YA_RLY",
+	"NO_WAI",
+	"I_IZ",
+
+	"I_HAS_A",
+	"IS_NOW_A",
+	"IM_IN_YR",
+	"IM_OUTTA_YR",
+	"HOW_IZ_I",
+
+	"IF_U_SAY_SO"
+
+	"PROG",
+	"VAR_DEC",
+	"VAR_VAL",
+	"LITERAL",
+	"STMT",
+	"SINGLE_STMT",
+	"COMPOUND_STMT",
+	"PRINT",
+	"INPUT",
+	"EXPR",
+	"ARITHMETIC",
+	"BOOLEAN_STMT",
+	"FIN_BOOLEAN",
+	"INF_BOOLEAN",
+	"INF_BOOLEAN_ARG",
+	"INF_LAST_ARG",
+	"CONCATENATION",
+	"CONCAT_OPERAND",
+	"COMPARISON",
+	"RELATIONAL",
+	"TYPECASTING",
+	"ASSIGNMENT",
+	"IF_ELSE",
+	"BRANCHES_BLOCK",
+	"SWITCH_CASE",
+	"CASE_BLOCK",
+	"DEFAULT_BLOCK",
+	"LOOP",
+	"LOOP_VAR_OPERATION",
+	"BREAK_CONDITION",
+	"BREAK_CHOICE",
+	"FUNCTION_DEFINITION",
+	"PARAMETER",
+	"FUNCTION_CALL",
+	"ARGUMENT"
+};
+
 typedef struct {
     TokenType type;
     char* lexeme;
@@ -169,6 +270,7 @@ int addToken(TokenList* list, Token* newToken){
     temp = realloc(list->tokens, sizeof(Token) * list->numTokens + 1);
     if(temp != NULL){
         list->tokens = temp;
+        list->tokens[list->numTokens] = newToken;
     } else {
         printf("Token list realloc error\n");
         exit(1);
@@ -222,6 +324,18 @@ int isIdentifier(char* lex){
     return 0;
 }
 
+int isString(char* lex){
+    int c = 0;
+    if(lex[c] == '"'){
+        c++;
+        while(isprint(lex[c]) != 0 && c <= strlen(lex)){
+            c++;
+        }
+        if(c == strlen(lex)) return 1;
+    }
+    return 0;
+}
+
 TokenType isKeyword(LexemeList* list, int *pos){
     int len;                                // number of words in the keyword
     Lexeme* lptr = list->lexemes[*pos];     // pointer to lexeme
@@ -271,9 +385,8 @@ TokenList* tokenize(LexemeList* list){
             newToken = createToken(TOK_INTEGER, list->lexemes[i]->value, list->lexemes[i]->line); 
         } else if(isFloat(list->lexemes[i]->value)){
             newToken = createToken(TOK_FLOAT, list->lexemes[i]->value, list->lexemes[i]->line); 
-        // }                    
-        // else if(){
-            // if string
+        } else if(isString(list->lexemes[i]->value)){
+            newToken = createToken(TOK_STRING, list->lexemes[i]->value, list->lexemes[i]->line);
         } else if(list->lexemes[i]->value == "WIN"){
             newToken = createToken(TOK_BOOLEAN, "WIN", list->lexemes[i]->line); 
         } else if(list->lexemes[i]->value == "FAIL"){
@@ -284,7 +397,7 @@ TokenList* tokenize(LexemeList* list){
             if(type != -1){ // if keyword matched
                 newToken = createToken(type, list->lexemes[i]->value, list->lexemes[i]->line);
             } else if(isIdentifier(list->lexemes[i]->value)){
-            //     newToken = createToken(TOK_IDENT, list->lexemes[i]->value, list->lexemes[i]->line);
+                newToken = createToken(TOK_IDENT, list->lexemes[i]->value, list->lexemes[i]->line);
             } 
         }
 
@@ -300,6 +413,6 @@ TokenList* tokenize(LexemeList* list){
 
 void printTokenList(TokenList *list) {
     for(int i = 0; i < list->numTokens; i++) {
-        printf("Token %d: %s (line %d)\n", i, list->tokens[i]->lexeme, list->tokens[i]->line);
+        printf("Line: %-4d Token %-3d Type: %-12s Lexeme: %-20s\n", list->tokens[i]->line, i, string_ver[list->tokens[i]->type], list->tokens[i]->lexeme);
     }
 }
