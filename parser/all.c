@@ -97,7 +97,6 @@ void syntaxError(char *msg){
 	exit(1);
 }
 
-
 /*
 	Finite Automata? to parse token list and build AST
 */
@@ -175,6 +174,7 @@ ast_node* input(){
 		s = createNode(IDENT);
 		s->id_name = (*cur)->lexeme;
 		addChild(n, s);
+		cur++;
 	} else {
 		syntaxError("Expected Identifier in GIMMEH");
 	}
@@ -191,8 +191,10 @@ ast_node* assignment(){
 	cur++;
 	if(curType == TOK_R){
 		addChild(n, createNode(R));
+		cur++;
 		s = var_val();
 		addChild(n, s);
+		cur++;
 	} else {
 		syntaxError("Expected R");
 	}
@@ -210,6 +212,7 @@ ast_node* function_call(){
 		cur++;
 		if(curType == TOK_MKAY){ // no args
 			addChild(n, createNode(MKAY));
+			cur++;
 		} else if(curType == TOK_YR){ // has args
 			addChild(n, createNode(YR));
 			while(curType != TOK_MKAY){
@@ -499,6 +502,7 @@ ast_node* typecasting(){
 					s = createNode(TYPE);
 					s->string_val = (*cur)->lexeme;
 					addChild(n, s);
+					cur++;
 				} else {
 					syntaxError("Expected type literal after identifier in typecast");
 				}
@@ -544,8 +548,8 @@ ast_node* expr(){
 	return n;
 }
 
+/* single_stmt> ::= <print> | <input> | <expr> | <assignment> | <function_call> | GTFO */
 ast_node* single_stmt(){ 
-	/*<single_stmt> ::= <print> | <input> | <expr> | <assignment> | <function_call> | GTFO */
 	ast_node *n, *s;
 	n = createNode(SINGLE_STMT);
 	// cur++;
@@ -560,11 +564,11 @@ ast_node* single_stmt(){
 			addChild(n, input());
 			break;
 		case TOK_IDENT: /* varident R <var_val>*/
-			printf("ASSIGN FOUND\n");
+			printf("IDENT: Found stmt beginning with ident\n");
 			if(nextType == TOK_R){
 				addChild(n, assignment());
 			} else {
-				printf("NOT ASSIGN\n");
+				printf("IDENT Not assign statement\n");
 			}
 			break;
 		case TOK_I_IZ: /* <function_call> ::= I IZ funident MKAY | I IZ funident <argument> MKAY*/
@@ -581,11 +585,9 @@ ast_node* single_stmt(){
 
 	// cur++;
 	if(curType != TOK_KTHXBYE){	// end of program not encountered, check for <stmt> ::= <single_stmt> <stmt>
-		s = stmt();
-		if(s != NULL){
-			addChild(n, s);
-		}
+		addChild(n, stmt());
 	}
+
 	return n;
 }
 
@@ -955,10 +957,13 @@ int main(){
 	TokenList* tokList = tokenize(lexList);
 	cur = tokList->tokens;
 	listTokens(tokList);
+	
+
 	cur = tokList->tokens;
 	ast_node* root = program(tokList, tokList->numTokens);
 	printf("ROOT HAS %d children\n", root->numChildren);
 	print_ast_root(root);
+
 	// printf("%d\n", root->children[0]->type);1
 	// visit2(root, -1, -1, 'S');
 }
