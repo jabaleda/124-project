@@ -779,7 +779,7 @@ TokenType isKeyword(LexemeList* list, int *pos){
                 cptr++;
             }
         }
-        if(*sptr == '\0'){ // successfully parsed a keyword
+        if(*sptr == *cptr && *sptr == '\0'){ // successfully parsed a keyword
             len++;
             *pos += len-1; // move lexemeList iterator
             return i+6;  // return corresponding TokenType

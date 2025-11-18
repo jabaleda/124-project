@@ -76,7 +76,7 @@ ast_node* createNode(int type){
 }
 
 void addChild(ast_node* parent, ast_node* child){
-	Token** temp = NULL;
+	ast_node** temp = NULL;
 	temp = realloc(parent->children, sizeof(Token*) * (parent->numChildren + 1));
 	if(temp != NULL){
 		parent->children = temp;
@@ -535,7 +535,7 @@ ast_node* expr(){
 		addChild(n, typecasting());
 	}
 
-	return 0;
+	return n;
 }
 
 ast_node* single_stmt(){ 
