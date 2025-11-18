@@ -79,6 +79,7 @@ ast_node* createNode(int type){
 	return newNode;
 }
 
+/* Add a child node and increment token array pointer*/
 void addChild(ast_node* parent, ast_node* child){
 	ast_node** temp = NULL;
 	temp = realloc(parent->children, sizeof(ast_node*) * (parent->numChildren + 1));
@@ -89,11 +90,31 @@ void addChild(ast_node* parent, ast_node* child){
 	}
 	parent->children[parent->numChildren] = child;
 	parent->numChildren++;
+	cur++;
+	printf("Added %s as child of %s.\n", string_ver[child->type], string_ver[parent->type]);
+}
+
+/* 
+	Add a child node without incrementing. Used when adding a child node that
+	does not directly consume a token (i.e. the second parameter is a function
+	call to a non-terminal symbol). 
+*/
+void addChildNoIncrement(ast_node* parent, ast_node* child){
+	ast_node** temp = NULL;
+	temp = realloc(parent->children, sizeof(ast_node*) * (parent->numChildren + 1));
+	if(temp != NULL){
+		parent->children = temp;
+	} else {
+		printf("Add child node realloc error.\n");
+	}
+	parent->children[parent->numChildren] = child;
+	parent->numChildren++;
+	cur++;
 	printf("Added %s as child of %s.\n", string_ver[child->type], string_ver[parent->type]);
 }
 
 void syntaxError(char *msg){
-	printf("Syntax error: %s\n", msg);
+	printf("Syntax error: %s (line: %d)\n", msg, (*cur)->line);
 	exit(1);
 }
 
@@ -102,27 +123,23 @@ void syntaxError(char *msg){
 */
 ast_node* var_dec(){
 	ast_node* n = createNode(VAR_DEC), *s;
-	addChild(n, createNode(I_HAS_A));
 	do{
-		cur++;
+		addChild(n, createNode(I_HAS_A));
 		if(curType == TOK_IDENT){
 			s = createNode(IDENT);
 			s->string_val = (*cur)->lexeme;
 			addChild(n, s);
-			if(nextType == TOK_ITZ){
-				cur++;
+			if(curType == TOK_ITZ){		// Variable declaration has initialization
 				addChild(n, createNode(ITZ));
 				addChild(n, var_val());
 			}
 		}
-		cur++;
 	} while(curType == TOK_I_HAS_A);
 }
 
 ast_node* var_val(){
 	ast_node* n, *s;
-	// cur++;
-	printf(" IN VAR_VAL, cur = %d\n", curType);
+	printf("Trace: IN VAR_VAL, cur = %d\n", curType);
 	switch(curType){
 		case TOK_IDENT:
 			n = createNode(IDENT);
@@ -149,7 +166,7 @@ ast_node* var_val(){
 			n->string_val = (*cur)->lexeme;
 			break;
 		default:
-			printf("Reached default of var_val\n"); // !!!
+			printf("Trace: Reached default of var_val\n"); // !!!
 			addChild(n, expr());
 	}
 	return n;
@@ -159,9 +176,7 @@ ast_node* print(){
 	ast_node *n;
 	n = createNode(PRINT);
 	addChild(n, createNode(VISIBLE));
-	cur++;
 	addChild(n, var_val());
-	cur++;
 	return n;
 }
 
@@ -169,12 +184,10 @@ ast_node* input(){
 	ast_node *n, *s;
 	n = createNode(INPUT);
 	addChild(n, createNode(GIMMEH));
-	cur++;
 	if(curType == IDENT) {
 		s = createNode(IDENT);
 		s->id_name = (*cur)->lexeme;
 		addChild(n, s);
-		cur++;
 	} else {
 		syntaxError("Expected Identifier in GIMMEH");
 	}
@@ -188,47 +201,42 @@ ast_node* assignment(){
 	s = createNode(IDENT);
 	s->string_val = (*cur)->lexeme; 
 	addChild(n, s);
-	cur++;
 	if(curType == TOK_R){
 		addChild(n, createNode(R));
-		cur++;
 		s = var_val();
 		addChild(n, s);
-		cur++;
 	} else {
 		syntaxError("Expected R");
 	}
-	
 	return n;
 }
 
 ast_node* function_call(){
 	ast_node* n = createNode(I_IZ), *s;
-	cur++;
 	if(curType == TOK_IDENT){
 		s = createNode(IDENT);
 		s->id_name = (*cur)->lexeme;
 		addChild(n, s);
-		cur++;
-		if(curType == TOK_MKAY){ // no args
+		if(curType == TOK_MKAY){		// no args
 			addChild(n, createNode(MKAY));
-			cur++;
-		} else if(curType == TOK_YR){ // has args
+		} else if(curType == TOK_YR){	// has args
 			addChild(n, createNode(YR));
-			while(curType != TOK_MKAY){
-				s = var_val();
-				if(s != NULL){
-					addChild(n, s);
-				} else {
-					syntaxError("Expected valid function arg");
-				}
-				cur++;
-				if(curType == TOK_AN){
-					addChild(n, createNode(AN));
-				} else {
-					syntaxError("Expected AN arg separator");
+			// expect MKAY to end function call statement
+			// else assumes arguments are being passed
+
+			if(curType != TOK_MKAY){
+				addChild(n, var_val);
+				while(curType != TOK_MKAY){
+					if(curType == TOK_AN){
+						addChild(n, createNode(AN));
+						addChild(n, var_val);
+					} else {
+						syntaxError("Expected AN arg separator");
+					}
 				}
 			}
+
+			// exited while loop, current token must be MKAY
 			if(curType == TOK_MKAY){
 				addChild(n, createNode(MKAY));
 			} else {
@@ -518,7 +526,6 @@ ast_node* typecasting(){
 ast_node* expr(){
 	ast_node *n, *s;
 	n = createNode(EXPR);
-	// cur++;
 
 	// <arithmetic>
 	if(curType == TOK_SUM_OF || curType == TOK_DIFF_OF || curType == TOK_PRODUKT_OF || curType == TOK_QUOSHUNT_OF || curType == TOK_MOD_OF){
@@ -828,63 +835,44 @@ ast_node* stmt(){
 	printf("IN STMT\n");
 	printf("stmt curlex: %s\n", string_ver[(*cur)->type]);
 
-	// if(nextType != TOK_KTHXBYE) cur++;
-
 	if(/*curType != TOK_O_RLY || */ curType == TOK_WTF || curType == TOK_IM_IN_YR || curType == TOK_HOW_IZ_I){
-		addChild(n, compound_stmt());
+		addChildNoIncrement(n, compound_stmt());
 	} else {
-		addChild(n, single_stmt());
+		addChildNoIncrement(n, single_stmt());
 	}
 
-	// single = single_stmt();
-	// compound = compound_stmt();
-	// if(single != NULL) addChild(n, single);
-	// if(compound != NULL) addChild(n, single);
 	printf("RETURNING STMT\n");
 	return n;
-
 }
 
 ast_node* program(TokenList* tokenList, int numTokens){
 	ast_node* n;
-	if((*cur)->type == TOK_HAI){
+	if(curType == TOK_HAI){
 		n = createNode(PROG);
 		addChild(n, createNode(HAI));
-		cur++;
-		if((*cur)->type == TOK_WAZZUP){
+		if(curType == TOK_WAZZUP){
 			addChild(n, createNode(WAZZUP));
-			cur++;
-			if(curType == TOK_I_HAS_A){	// Found var dec statement
-				addChild(n, var_dec());
+			if(curType == TOK_I_HAS_A){					// Found var dec statement
+				addChildNoIncrement(n, var_dec());
 					if(curType == TOK_BUHBYE){
 					addChild(n, createNode(BUHBYE));
-					if((*cur+1)->type != TOK_KTHXBYE){		// next token in list is not KTHXBYE, check if statement
+					if(curType != TOK_KTHXBYE){			// next token in list is not KTHXBYE, expect statement
 						printf("FOUND STATEMENT\n");
-						addChild(n, stmt());
+						addChildNoIncrement(n, stmt());
 						addChild(n, createNode(KTHXBYE));
 					} else {
-						addChild(n, createNode(KTHXBYE));
-						cur++;
+						addChildNoIncrement(n, createNode(KTHXBYE));
 					}
 				}
 			} else if((*cur)->type == TOK_BUHBYE){		// No vars declared
 				printf("No vars\n");
 				addChild(n, createNode(BUHBYE));
-				cur++;
-				// printf("buhbye: %s\n", string_ver[curType]);
-				// printf("after buhbye: %s\n", string_ver[nextType]);
-
-				// printf("Next: %s", string_ver[curType]);
-				// printf("Next: %s", string_ver[(*cur+1)->type]);
-				// printf("Next: %s", string_ver[(*cur+2)->type]);
-				// printf("Next: %s", string_ver[(*cur+3)->type]);
-				if(curType != TOK_KTHXBYE){		// next token in list is not KTHXBYE, check if statement
+				if(curType != TOK_KTHXBYE){		// next token in list is not KTHXBYE, expect statement
 					printf("FOUND STATEMENT\n");
-					addChild(n, stmt());
+					addChildNoIncrement(n, stmt());
 					addChild(n, createNode(KTHXBYE));
 				} else {
 					addChild(n, createNode(KTHXBYE));
-					cur++;	// ??
 				}
 			} else {
 				syntaxError("Expected variable assignment or BUHBYE");
