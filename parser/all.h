@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <assert.h>
 
 typedef enum{
 	// Literals
@@ -680,7 +681,7 @@ TokenList* createTokenList(){
 
 int addToken(TokenList* list, Token* newToken){
     Token **temp = NULL;
-    temp = realloc(list->tokens, sizeof(Token) * list->numTokens + 1);
+    temp = realloc(list->tokens, sizeof(Token*) * list->numTokens + 1);
     if(temp != NULL){
         list->tokens = temp;
         list->tokens[list->numTokens] = newToken;
@@ -896,6 +897,7 @@ void print_ast(const ast_node *node, const char *prefix, int is_last) {
     );
 
     // Recurse for each child
+    assert(node->numChildren >= 0 && node->numChildren < 1000);
     for (int i = 0; i < node->numChildren; i++) {
         print_ast(node->children[i], new_prefix, i == node->numChildren - 1);
     }

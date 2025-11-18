@@ -61,7 +61,10 @@
 #define curType (*cur)->type
 #define nextType (*(cur+1))->type
 
-Token** cur; // Pointer to token list, change type later to token pag nagana na lexer!!!
+/* Pointer to elements in token array */
+Token** cur;
+
+/* Total number of nodes in AST*/
 int numNodes = 0;
 
 // ast_node* ;
@@ -69,15 +72,16 @@ int numNodes = 0;
 ast_node* createNode(int type){
 	ast_node* newNode = malloc(sizeof(ast_node));
 	newNode->node_id = numNodes;
-	numNodes++;
 	newNode->type = type;
 	newNode->children = NULL;
+	newNode->numChildren = 0;
+	numNodes++;
 	return newNode;
 }
 
 void addChild(ast_node* parent, ast_node* child){
 	ast_node** temp = NULL;
-	temp = realloc(parent->children, sizeof(Token*) * (parent->numChildren + 1));
+	temp = realloc(parent->children, sizeof(ast_node*) * (parent->numChildren + 1));
 	if(temp != NULL){
 		parent->children = temp;
 	} else {
@@ -118,7 +122,7 @@ ast_node* var_dec(){
 
 ast_node* var_val(){
 	ast_node* n, *s;
-	cur++;
+	// cur++;
 	printf(" IN VAR_VAL, cur = %d\n", curType);
 	switch(curType){
 		case TOK_IDENT:
@@ -156,7 +160,9 @@ ast_node* print(){
 	ast_node *n;
 	n = createNode(PRINT);
 	addChild(n, createNode(VISIBLE));
+	cur++;
 	addChild(n, var_val());
+	cur++;
 	return n;
 }
 
@@ -573,7 +579,7 @@ ast_node* single_stmt(){
 			// try compound addChild()
 	}
 
-	cur++;
+	// cur++;
 	if(curType != TOK_KTHXBYE){	// end of program not encountered, check for <stmt> ::= <single_stmt> <stmt>
 		s = stmt();
 		if(s != NULL){
@@ -820,7 +826,7 @@ ast_node* stmt(){
 	printf("IN STMT\n");
 	printf("stmt curlex: %s\n", string_ver[(*cur)->type]);
 
-	if(nextType != TOK_KTHXBYE) cur++;
+	// if(nextType != TOK_KTHXBYE) cur++;
 
 	if(/*curType != TOK_O_RLY || */ curType == TOK_WTF || curType == TOK_IM_IN_YR || curType == TOK_HOW_IZ_I){
 		addChild(n, compound_stmt());
@@ -862,20 +868,21 @@ ast_node* program(TokenList* tokenList, int numTokens){
 			} else if((*cur)->type == TOK_BUHBYE){		// No vars declared
 				printf("No vars\n");
 				addChild(n, createNode(BUHBYE));
-				printf("buhbye: %s\n", string_ver[curType]);
-				printf("after buhbye: %s\n", string_ver[nextType]);
+				cur++;
+				// printf("buhbye: %s\n", string_ver[curType]);
+				// printf("after buhbye: %s\n", string_ver[nextType]);
 
 				// printf("Next: %s", string_ver[curType]);
 				// printf("Next: %s", string_ver[(*cur+1)->type]);
 				// printf("Next: %s", string_ver[(*cur+2)->type]);
 				// printf("Next: %s", string_ver[(*cur+3)->type]);
-				if(nextType != TOK_KTHXBYE){		// next token in list is not KTHXBYE, check if statement
+				if(curType != TOK_KTHXBYE){		// next token in list is not KTHXBYE, check if statement
 					printf("FOUND STATEMENT\n");
 					addChild(n, stmt());
 					addChild(n, createNode(KTHXBYE));
 				} else {
 					addChild(n, createNode(KTHXBYE));
-					cur++;
+					cur++;	// ??
 				}
 			} else {
 				syntaxError("Expected variable assignment or BUHBYE");
