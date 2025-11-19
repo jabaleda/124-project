@@ -483,7 +483,7 @@ LexemeList* lex(/*FILE* fp*/) {
     // * ----- End File Reading into Buffer -----
 
     // * ----- Lexeme Buildeing -----
-    int iter = 0, lines_read = 0;
+    int iter = 0, lines_read = 1;
     int chars_read;
     char *start = lines_read_buffer;
     char *current_char = lines_read_buffer;
@@ -791,7 +791,7 @@ TokenType isKeyword(LexemeList* list, int *pos){
 
 void printTokenList(TokenList *list) {
     for(int i = 0; i < list->numTokens; i++) {
-        printf("Line: %-4d Token %-3d Type: %-12s Lexeme: %-20s\n", list->tokens[i]->line, i, string_ver[list->tokens[i]->type], list->tokens[i]->lexeme);
+        printf("Line: %-4d Token %-3d Type: %-12s Lexeme: %-20s\n", list->tokens[i]->line, i+1, string_ver[list->tokens[i]->type], list->tokens[i]->lexeme);
     }
 }
 
