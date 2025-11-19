@@ -119,8 +119,8 @@ void syntaxError(char *msg){
 	exit(1);
 }
 
-void trace(char* msg){
-	printf("Trace: %s	Current Token: %s\n", msg, string_ver[curType]);
+void trace(char* msg, char* node){
+	printf("Trace: %s	In: %s\n		Current Token: %s	Lexeme: %s	Line: %d\n\n", msg, node,string_ver[curType], (*cur)->lexeme,(*cur)->line);
 }
 
 /*
@@ -129,51 +129,63 @@ void trace(char* msg){
 ast_node* var_dec(){
 	ast_node* n = createNode(VAR_DEC), *s;
 	do{
+		trace("Found I HAS A", string_ver[n->type]);
 		addChild(n, createNode(I_HAS_A));
 		if(curType == TOK_IDENT){
-			s = createNode(IDENT);
-			s->string_val = (*cur)->lexeme;
-			addChild(n, s);
+			addChildNoIncrement(n, var_val());
+			trace("Returned from first ident in var_dec", string_ver[n->type]);
 			if(curType == TOK_ITZ){		// Variable declaration has initialization
 				addChild(n, createNode(ITZ));
-				addChild(n, var_val());
+				addChildNoIncrement(n, var_val());
 			}
+		} else {
+			syntaxError("Expected identifier after I HAS A");
 		}
 	} while(curType == TOK_I_HAS_A);
+
+
+
+	trace("Returning var_dec", string_ver[n->type]);
+	return n;
 }
 
 ast_node* var_val(){
-	ast_node* n, *s;
+	ast_node *n = createNode(VAR_VAL), *s;
 	// for tracing remove lex variable later !!!
-	trace("In var_val");
-	printf("Var value: %s\n", (*cur)->lexeme);
+	trace("", string_ver[n->type]);
 	switch(curType){
 		case TOK_IDENT:
-			n = createNode(IDENT);
-			n->id_name = (*cur)->lexeme;
+			s = createNode(IDENT);
+			s->id_name = (*cur)->lexeme;
+			addChild(n, s);
 			break;
 		case TOK_INTEGER:
-			n = createNode(INTEGER);
-			n->num_val = atoi((*cur)->lexeme);
+			s = createNode(INTEGER);
+			s->num_val = atoi((*cur)->lexeme);
+			addChild(n, s);
 			break;
 		case TOK_FLOAT:
-			n = createNode(FLOAT);
-			n->num_val = atof((*cur)->lexeme);
+			s = createNode(FLOAT);
+			s->num_val = atof((*cur)->lexeme);
+			addChild(n, s);
 			break;
 		case TOK_STRING:
-			n = createNode(STRING);
-			n->string_val = (*cur)->lexeme;
+			s = createNode(STRING);
+			s->string_val = (*cur)->lexeme;
+			addChild(n, s);
 			break;
 		case TOK_BOOLEAN:
-			n = createNode(BOOLEAN);
-			n->string_val = (*cur)->lexeme;
+			s = createNode(BOOLEAN);
+			s->string_val = (*cur)->lexeme;
+			addChild(n, s);
 			break;
 		case TOK_TYPE:
-			n = createNode(TYPE);
-			n->string_val = (*cur)->lexeme;
+			s = createNode(TYPE);
+			s->string_val = (*cur)->lexeme;
+			addChild(n, s);
 			break;
 		default:
-			printf("Trace: Reached default of var_val\n"); // !!!
+			trace("Reached default", string_ver[n->type]); // !!!
 			// check if current token is a keyword to any of the expression statements
 			// else throw error
 			int isExprKeyword = 0;
@@ -184,11 +196,13 @@ ast_node* var_val(){
 				}
 			}
 			if(isExprKeyword){
-				addChild(n, expr());
+				trace("expr keyword found", string_ver[n->type]);
+				addChildNoIncrement(n, expr());
 			} else {
 				syntaxError("Expected identifier/literal");
 			}
 	}
+	trace("Returning", string_ver[n->type]);
 	return n;
 }
 
@@ -438,13 +452,13 @@ ast_node* concatenation(){
 	addChild(n, createNode(SMOOSH));
 	addChild(n, var_val());
 	addChildNoIncrement(n, concat_operand());
-	trace("Returning concatenation node");
+	trace("Returning concatenation node", string_ver[n->type]);
 	return n;
 }
 
 ast_node* concat_operand(){
 	ast_node* n = createNode(CONCAT_OPERAND);
-	trace("In concat_operand");
+	trace("In concat_operand", string_ver[n->type]);
 	if(curType != TOK_AN){
 		syntaxError("Expected arg separator AN in SMOOSH");
 	}
@@ -452,9 +466,9 @@ ast_node* concat_operand(){
 	do{
 		addChild(n, createNode(AN));
 		addChild(n, var_val());
-		trace("In concat_operand loop");
+		trace("In concat_operand loop", string_ver[n->type]);
 	}while(curType == TOK_AN);
-	trace("Outside of concat_operand loop, returning concat_operand node");
+	trace("Outside of concat_operand loop, returning concat_operand node", string_ver[n->type]);
 	return n;
 }
 
@@ -558,7 +572,7 @@ ast_node* expr(){
 	} else {
 		syntaxError("Unexpected identifier/literal");
 	}
-	trace("Returning expression");
+	trace("Returning expression", string_ver[n->type]);
 	return n;
 }
 
@@ -599,7 +613,7 @@ ast_node* single_stmt(){
 	if(curType != TOK_KTHXBYE){	// end of program not encountered, check for <stmt> ::= <single_stmt> <stmt>
 		addChild(n, stmt());
 	}
-	trace("Returning single statement");
+	trace("Returning single statement", string_ver[n->type]);
 	return n;
 }
 
@@ -846,7 +860,7 @@ ast_node* stmt(){
 		addChildNoIncrement(n, single_stmt());
 	}
 
-	trace("Returning stmt");
+	trace("Returning stmt", string_ver[n->type]);
 	return n;
 }
 
@@ -858,26 +872,32 @@ ast_node* program(TokenList* tokenList, int numTokens){
 		if(curType == TOK_WAZZUP){
 			addChild(n, createNode(WAZZUP));
 			if(curType == TOK_I_HAS_A){					// Found var dec statement
+				trace("Found var_dec", string_ver[n->type]);
 				addChildNoIncrement(n, var_dec());
+				trace("End of var_decs", string_ver[n->type]);
+					// cur++;
 					if(curType == TOK_BUHBYE){
-					addChild(n, createNode(BUHBYE));
-					if(curType != TOK_KTHXBYE){			// next token in list is not KTHXBYE, expect statement
-						printf("FOUND STATEMENT\n");
-						addChildNoIncrement(n, stmt());
-						addChild(n, createNode(KTHXBYE));
+						addChild(n, createNode(BUHBYE));
+						if(curType == TOK_KTHXBYE){			// next token in list is not KTHXBYE, expect statement
+							addChild(n, createNode(KTHXBYE));
+						} else {
+							trace("Found statement, after in var_dec", string_ver[n->type]);
+							addChildNoIncrement(n, stmt());
+							addChild(n, createNode(KTHXBYE));
+						}
 					} else {
-						addChildNoIncrement(n, createNode(KTHXBYE));
+						syntaxError("Unexpected token");
 					}
-				}
-			} else if((*cur)->type == TOK_BUHBYE){		// No vars declared
-				trace("No var dec found");
-				addChild(n, createNode(BUHBYE));
-				if(curType != TOK_KTHXBYE){		// next token in list is not KTHXBYE, expect statement
-					printf("FOUND STATEMENT\n");
-					addChildNoIncrement(n, stmt());
+			} else if(curType == TOK_BUHBYE){		// No vars declared
+					trace("No var dec found", string_ver[n->type]);
+					addChild(n, createNode(BUHBYE));
+				if(curType == TOK_KTHXBYE){			// End of program keyword immediately encountered
+													// Expect no further statements (all tokens consumed)
 					addChildNoIncrement(n, createNode(KTHXBYE));
 				} else {
-					addChildNoIncrement(n, createNode(KTHXBYE));
+					trace("Found stmt after in no var_dec", string_ver[n->type]);
+					addChildNoIncrement(n, stmt());
+					addChild(n, createNode(KTHXBYE));
 				}
 			} else {
 				syntaxError("Expected variable assignment or BUHBYE");
@@ -887,10 +907,9 @@ ast_node* program(TokenList* tokenList, int numTokens){
 		syntaxError("Expected HAI");
 	}
 
-	if(cur < &tokenList->tokens[numTokens-1]){ // Encountered KTHXBYE early (other stuff found after KTHXBYE)
-		syntaxError("Statements past KTHXBYE");
+	if(cur < &tokenList->tokens[numTokens-1]){	// Not all tokens consumed after KTHXBYE keyword encountered
+		syntaxError("Unexpected statement past end of program 'KTHXBYE'");
 	}
-
 	printf("Done parsing.\n");
 	return n;
 }
@@ -955,7 +974,7 @@ int main(){
 
 	cur = tokList->tokens;
 	ast_node* root = program(tokList, tokList->numTokens);
-	printf("ROOT HAS %d children\n", root->numChildren);
+	// printf("ROOT HAS %d children\n", root->numChildren);
 	print_ast_root(root);
 
 	// printf("%d\n", root->children[0]->type);1

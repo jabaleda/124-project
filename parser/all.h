@@ -345,7 +345,6 @@ char* string_ver[] = {
 	"ARGUMENT"
 };
 
-
 typedef struct {
     char *value;
     unsigned int line;  // for error handling
@@ -791,7 +790,7 @@ TokenType isKeyword(LexemeList* list, int *pos){
 
 void printTokenList(TokenList *list) {
     for(int i = 0; i < list->numTokens; i++) {
-        printf("Line: %-4d Token %-3d Type: %-12s Lexeme: %-20s\n", list->tokens[i]->line, i+1, string_ver[list->tokens[i]->type], list->tokens[i]->lexeme);
+        printf("Line: %-4d Token %-3d Type: %-12s Lexeme[%d]: %-20s\n", list->tokens[i]->line, i+1, string_ver[list->tokens[i]->type], i, list->tokens[i]->lexeme);
     }
 }
 
@@ -799,7 +798,7 @@ TokenList* tokenize(LexemeList* list){
     TokenList* tokenList = createTokenList();
     printf("\n==========TOKENIZER==========\n");
     for(int i = 0; i < list->total_num; i++){
-        printf("On lexeme number %d\n", i);
+        // printf("On lexeme number %d\n", i);
         Token* newToken = NULL;
         if(isInteger(list->lexemes[i]->value)){
             newToken = createToken(TOK_INTEGER, list->lexemes[i]->value, list->lexemes[i]->line); 
@@ -807,9 +806,9 @@ TokenList* tokenize(LexemeList* list){
             newToken = createToken(TOK_FLOAT, list->lexemes[i]->value, list->lexemes[i]->line); 
         } else if(isString(list->lexemes[i]->value)){
             newToken = createToken(TOK_STRING, list->lexemes[i]->value, list->lexemes[i]->line);
-        } else if(list->lexemes[i]->value == "WIN"){
+        } else if(strcmp(list->lexemes[i]->value, "WIN") == 0){
             newToken = createToken(TOK_BOOLEAN, "WIN", list->lexemes[i]->line); 
-        } else if(list->lexemes[i]->value == "FAIL"){
+        } else if(strcmp(list->lexemes[i]->value, "FAIL") == 0){
             newToken = createToken(TOK_BOOLEAN, "FAIL", list->lexemes[i]->line); 
         } else {
             // Check if keyword
