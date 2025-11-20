@@ -874,11 +874,50 @@ ast_node* if_else();
 ast_node* branches_block();
 
 /*////////////////////////////////////////////////////////////////////////*/
-void print_ast(const ast_node *node, const char *prefix, int is_last) {
+// void print_ast(const ast_node *node, const char *prefix, int is_last) {
+//     if (!node) return;
+
+//     // Print prefix + branch characters
+//     printf("%s%s%s[%d]\n",
+//         prefix,
+//         is_last ? "└── " : "├── ",
+//         string_ver[node->type],
+//         node->node_id
+//     );
+
+//     // Build next prefix for children
+//     char new_prefix[512];
+//     snprintf(
+//         new_prefix,
+//         sizeof(new_prefix),
+//         "%s%s",
+//         prefix,
+//         is_last ? "    " : "│   "
+//     );
+
+//     // Recurse for each child
+//     assert(node->numChildren >= 0 && node->numChildren < 1000);
+//     for (int i = 0; i < node->numChildren; i++) {
+//         print_ast(node->children[i], new_prefix, i == node->numChildren - 1);
+//     }
+// }
+
+// void print_ast_root(const ast_node* root) {
+//     if (!root) return;
+//     printf("%s[%d]\n", string_ver[root->type], root->node_id);
+
+//     for (int i = 0; i < root->numChildren; i++) {
+//         print_ast(root->children[i], "", i == root->numChildren - 1);
+//     }
+// }
+
+#include <stdio.h>
+
+void print_ast_f(const ast_node *node, const char *prefix, int is_last, FILE *out) {
     if (!node) return;
 
     // Print prefix + branch characters
-    printf("%s%s%s[%d]\n",
+    fprintf(out, "%s%s%s[%d]\n",
         prefix,
         is_last ? "└── " : "├── ",
         string_ver[node->type],
@@ -898,15 +937,16 @@ void print_ast(const ast_node *node, const char *prefix, int is_last) {
     // Recurse for each child
     assert(node->numChildren >= 0 && node->numChildren < 1000);
     for (int i = 0; i < node->numChildren; i++) {
-        print_ast(node->children[i], new_prefix, i == node->numChildren - 1);
+        print_ast_f(node->children[i], new_prefix, i == node->numChildren - 1, out);
     }
 }
 
-void print_ast_root(const ast_node* root) {
+void print_ast_root_f(const ast_node *root, FILE *out) {
     if (!root) return;
-    printf("%s[%d]\n", string_ver[root->type], root->node_id);
+
+    fprintf(out, "%s[%d]\n", string_ver[root->type], root->node_id);
 
     for (int i = 0; i < root->numChildren; i++) {
-        print_ast(root->children[i], "", i == root->numChildren - 1);
+        print_ast_f(root->children[i], "", i == root->numChildren - 1, out);
     }
 }
