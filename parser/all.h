@@ -651,6 +651,7 @@ LexemeList* lex(/*FILE* fp*/) {
 
 typedef struct {
     TokenType type;
+    int tok_id;
     char* lexeme;
                     // add semantic value for literals OR leave it to parser to check Token's type
                     // then treating the lexeme accordingly (ex if type == INTEGER, use value of atoi(lexeme))
@@ -668,6 +669,7 @@ Token* createToken(TokenType type, char* lexeme, int line){
     newToken->lexeme = malloc(sizeof(char) * strlen(lexeme) + 1);
     strcpy(newToken->lexeme, lexeme);
     newToken->line = line;
+    newToken->tok_id = -1;
     return newToken;
 }
 
@@ -688,6 +690,7 @@ int addToken(TokenList* list, Token* newToken){
         printf("Token list realloc error\n");
         exit(1);
     }
+    newToken->tok_id = list->numTokens;
     list->numTokens++;
 }
 
@@ -810,6 +813,15 @@ TokenList* tokenize(LexemeList* list){
             newToken = createToken(TOK_BOOLEAN, "WIN", list->lexemes[i]->line); 
         } else if(strcmp(list->lexemes[i]->value, "FAIL") == 0){
             newToken = createToken(TOK_BOOLEAN, "FAIL", list->lexemes[i]->line); 
+        // Type literals
+        } else if(strcmp(list->lexemes[i]->value, "NUMBR") == 0){
+            newToken = createToken(TOK_TYPE, "NUMBR", list->lexemes[i]->line);
+        } else if(strcmp(list->lexemes[i]->value, "NUMBAR") == 0){
+            newToken = createToken(TOK_TYPE, "NUMBAR", list->lexemes[i]->line);
+        } else if(strcmp(list->lexemes[i]->value, "YARN") == 0){
+            newToken = createToken(TOK_TYPE, "YARN", list->lexemes[i]->line);
+        } else if(strcmp(list->lexemes[i]->value, "TROOF") == 0){
+            newToken = createToken(TOK_TYPE, "TROOF", list->lexemes[i]->line);
         } else {
             // Check if keyword
             int type = isKeyword(list, &i);

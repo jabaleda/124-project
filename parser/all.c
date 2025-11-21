@@ -61,7 +61,7 @@
 #define curType (*cur)->type
 #define nextType (*(cur+1))->type
 const int EXPR_KEYWORDS[] = {TOK_SUM_OF, TOK_DIFF_OF, TOK_PRODUKT_OF, TOK_QUOSHUNT_OF, TOK_MOD_OF, TOK_NOT, TOK_BOTH_OF, TOK_EITHER_OF, TOK_WON_OF, TOK_ALL_OF, TOK_ANY_OF, TOK_BOTH_SAEM, TOK_DIFFRINT, TOK_BIGGR_OF, TOK_SMALLR_OF, TOK_SMOOSH, TOK_MAEK};
-
+int lastTokIdx;
 /* Pointer to elements in token array */
 Token** cur;
 
@@ -535,22 +535,22 @@ ast_node* expr(){
 	ast_node *n, *s;
 	n = createNode(EXPR);
 	trace("Check expr", string_ver[n->type]);
-	printf("Next token: %s\n", string_ver[nextType]);
-
-	if(curType == TOK_IDENT && nextType == TOK_IS_NOW_A){
-		printf("TRUE\n");
+	int type = curType;
+	if((*cur)->tok_id < lastTokIdx){
+		printf("Next token: %s\n", string_ver[nextType]);
 	}
 
-	if(curType == TOK_SMOOSH){
-		addChildNoIncrement(n, concatenation());
-	}else if(  curType == TOK_SUM_OF 
+	if(curType == TOK_SMOOSH) addChildNoIncrement(n, concatenation());
+	if(  curType == TOK_SUM_OF 
 			|| curType == TOK_DIFF_OF 
 			|| curType == TOK_PRODUKT_OF 
 			|| curType == TOK_QUOSHUNT_OF 
 			|| curType == TOK_MOD_OF)
 	{
 		addChildNoIncrement(n, arithmetic());
-	}else if(curType == TOK_NOT 
+	}
+
+	if(curType == TOK_NOT 
 			|| curType == TOK_BOTH_OF 
 			|| curType == TOK_EITHER_OF
 			|| curType == TOK_WON_OF 
@@ -558,18 +558,35 @@ ast_node* expr(){
 			|| curType == TOK_ANY_OF)
 	{
 		addChildNoIncrement(n, boolean());
-	}else if(curType == TOK_BOTH_SAEM|| curType == TOK_DIFFRINT){
-		addChildNoIncrement(n, comparison());
-	}else if(curType == TOK_BIGGR_OF || TOK_SMALLR_OF){
-		addChildNoIncrement(n, relational());
-	}else if(curType == TOK_MAEK 
-		|| (curType == TOK_IDENT && nextType == TOK_IS_NOW_A) 
-		|| (curType == TOK_IDENT && nextType == TOK_R && (*(cur+2))->type == TOK_MAEK)){
-		// <typecasting>, does lookahead to distinguish from assignment which also has a rule starting with varident
-		addChildNoIncrement(n, typecasting());
-	}else{
-		syntaxError("Unexpected identifier/literal");
 	}
+	
+	if(curType == TOK_BOTH_SAEM|| curType == TOK_DIFFRINT){
+		addChildNoIncrement(n, comparison());
+	}
+	
+	if(curType == TOK_BIGGR_OF || TOK_SMALLR_OF){
+		addChildNoIncrement(n, relational());
+	}
+	
+	if(curType == TOK_MAEK) {
+		addChildNoIncrement(n, typecasting());
+	}
+		// extension of <typecasting>, does lookahead to distinguish from assignment which also has a rule starting with varident
+		// does extra checks to prevent trying to lookahead past last element of token list
+	if((*cur)->tok_id < lastTokIdx){
+		if(curType == TOK_IDENT && nextType == TOK_IS_NOW_A) {
+			addChildNoIncrement(n, typecasting());
+		}
+	}
+	
+	if((*cur)->tok_id < lastTokIdx-1){
+		if(curType == TOK_IDENT && nextType == TOK_R && (*(cur+2))->type == TOK_MAEK){
+			addChildNoIncrement(n, typecasting());
+		}
+	} else {
+		if(curType == TOK_IDENT) syntaxError("Unexpected identifier/literal");
+	}
+
 	trace("Returning expression", string_ver[n->type]);
 	return n;
 }
@@ -965,9 +982,9 @@ void listTokens(TokenList* list){
 int main(){
 	LexemeList* lexList = lex();
 	TokenList* tokList = tokenize(lexList);
+	lastTokIdx = tokList->numTokens;
 	cur = tokList->tokens;
 	listTokens(tokList);
-	
 
 	cur = tokList->tokens;
 	FILE *outfile = fopen("tree.txt","w");
