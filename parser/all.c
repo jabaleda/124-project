@@ -80,6 +80,15 @@ ast_node* createNode(int type){
 	return newNode;
 }
 
+void addTrace(ast_node* parent, ast_node* child){
+	if((*cur)->tok_id < lastTokIdx-1){
+		// printf("Added %s as child of %s. Current token: %s	Next token (Post-increment): %s\n", string_ver[child->type], string_ver[parent->type], string_ver[curType], string_ver[nextType]);
+		printf("Added %s as child of %s. Current token: %s\n", string_ver[child->type], string_ver[parent->type], string_ver[curType]);
+	} else {
+		printf("Added %s as child of %s.\n", string_ver[child->type], string_ver[parent->type]);
+	}
+}
+
 /* Add a child node and increment token array pointer*/
 void addChild(ast_node* parent, ast_node* child){
 	ast_node** temp = NULL;
@@ -91,9 +100,8 @@ void addChild(ast_node* parent, ast_node* child){
 	}
 	parent->children[parent->numChildren] = child;
 	parent->numChildren++;
+	// addTrace(parent, child);
 	cur++;
-	// printf("Added %s as child of %s. Current token (Post-increment): %s\n", string_ver[child->type], string_ver[parent->type], string_ver[curType]);
-	// printf("Added %s as child of %s. Current token (Post-increment): \n", string_ver[child->type], string_ver[parent->type]);
 }
 
 /* 
@@ -111,7 +119,7 @@ void addChildNoIncrement(ast_node* parent, ast_node* child){
 	}
 	parent->children[parent->numChildren] = child;
 	parent->numChildren++;
-	// printf("Added %s as child of %s. Current token (Post-increment): \n", string_ver[child->type], string_ver[parent->type]);
+	// addTrace(parent, child);
 }
 
 void syntaxError(char *msg){
@@ -391,6 +399,7 @@ ast_node* boolean(){
 ast_node* relational(){
 	ast_node* n;
 	n = createNode(RELATIONAL);
+	trace("In ", string_ver[n->type]);
 	switch(curType){
 		case TOK_BIGGR_OF:
 			addChild(n, createNode(BIGGR_OF));
@@ -540,7 +549,10 @@ ast_node* expr(){
 		printf("Next token: %s\n", string_ver[nextType]);
 	}
 
-	if(curType == TOK_SMOOSH) addChildNoIncrement(n, concatenation());
+	if(curType == TOK_SMOOSH){
+		addChildNoIncrement(n, concatenation());
+	}
+
 	if(  curType == TOK_SUM_OF 
 			|| curType == TOK_DIFF_OF 
 			|| curType == TOK_PRODUKT_OF 
@@ -559,12 +571,12 @@ ast_node* expr(){
 	{
 		addChildNoIncrement(n, boolean());
 	}
-	
-	if(curType == TOK_BOTH_SAEM|| curType == TOK_DIFFRINT){
+
+	if(curType == TOK_BOTH_SAEM || curType == TOK_DIFFRINT){
 		addChildNoIncrement(n, comparison());
 	}
 	
-	if(curType == TOK_BIGGR_OF || TOK_SMALLR_OF){
+	if(curType == TOK_BIGGR_OF || curType == TOK_SMALLR_OF){
 		addChildNoIncrement(n, relational());
 	}
 	
