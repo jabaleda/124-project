@@ -60,7 +60,7 @@
 
 #define curType (*cur)->type
 #define nextType (*(cur+1))->type
-const int EXPR_KEYWORDS[] = {TOK_SUM_OF, TOK_DIFF_OF, TOK_PRODUKT_OF, TOK_QUOSHUNT_OF, TOK_MOD_OF, TOK_NOT, TOK_BOTH_OF, TOK_EITHER_OF, TOK_WON_OF, TOK_ALL_OF, TOK_ANY_OF, TOK_BOTH_SAEM, TOK_DIFFRINT, TOK_BIGGR_OF, TOK_SMALLR_OF, TOK_SMOOSH, TOK_MAEK};
+const int EXPR_KEYWORDS[] = {TOK_SUM_OF, TOK_DIFF_OF, TOK_PRODUKT_OF, TOK_QUOSHUNT_OF, TOK_MOD_OF, TOK_NOT, TOK_BOTH_OF, TOK_EITHER_OF, TOK_WON_OF, TOK_ALL_OF, TOK_ANY_OF, TOK_BOTH_SAEM, TOK_DIFFRINT, TOK_BIGGR_OF, TOK_SMALLR_OF, TOK_SMOOSH};
 int lastTokIdx;
 /* Pointer to elements in token array */
 Token** cur;
@@ -194,7 +194,7 @@ ast_node* var_val(){
 			break;
 		default:
 			trace("Reached default", string_ver[n->type]); // !!!
-			// check if current token is a keyword to any of the expression statements
+			// check if current token is a keyword to any of the expression statements that return values
 			// else throw error
 			int isExprKeyword = 0;
 			for(int i = 0; i < sizeof(EXPR_KEYWORDS)/sizeof(int); i++){
@@ -207,7 +207,7 @@ ast_node* var_val(){
 				trace("expr keyword found", string_ver[n->type]);
 				addChildNoIncrement(n, expr());
 			} else {
-				syntaxError("Expected identifier/literal");
+				if(curType != TOK_MAEK) syntaxError("Expected identifier/literal");
 			}
 	}
 	trace("Returning", string_ver[n->type]);
@@ -421,6 +421,8 @@ ast_node* relational(){
 				syntaxError("Expected arg separator AN in binary relational");
 			}	
 			break;
+		case TOK_IDENT:
+			addChildNoIncrement(n, var_val());
 	}
 	return n;
 }
@@ -484,17 +486,14 @@ ast_node* typecasting(){
 	ast_node* n = createNode(TYPECASTING), *s;
 	trace("",string_ver[n->type]);
 	if(curType == TOK_MAEK){
+		trace("Entered MAEK format",string_ver[n->type]);
 		addChild(n, createNode(MAEK));
 		if(curType == TOK_IDENT){
-			s = createNode(IDENT);
-			s->string_val = (*cur)->lexeme;
-			addChild(n, s);
+			addChildNoIncrement(n, var_val());
 			if(curType == TOK_A){
 				addChild(n, createNode(A));
 				if(curType == TOK_TYPE){
-					s = createNode(TYPE);
-					s->string_val = (*cur)->lexeme;
-					addChild(n, s);
+					addChildNoIncrement(n, var_val());
 				} else {
 					syntaxError("Expected type literal after A");
 				}
@@ -504,16 +503,13 @@ ast_node* typecasting(){
 		} else {
 			syntaxError("Expected identifier after MAEK");
 		}
-	} else { // must follow either of (varident IS NOW A type | varident R MAEK varident type)
-		s = createNode(IDENT);
-		s->string_val = (*cur)->lexeme;
-		addChild(n, s);
+	} else if(curType == TOK_IDENT) { // must follow either of (varident IS NOW A type | varident R MAEK varident type)
+		trace("Entered IS NOW A/R MAEK format",string_ver[n->type]);
+		addChildNoIncrement(n, var_val());
 		if(curType == TOK_IS_NOW_A){
 			addChild(n, createNode(IS_NOW_A));
 			if(curType == TOK_TYPE){
-				s = createNode(TYPE);
-				s->string_val = (*cur)->lexeme;
-				addChild(n, s);
+				addChildNoIncrement(n, var_val());
 			} else {
 				syntaxError("Expected type literal after A");
 			}
@@ -521,13 +517,9 @@ ast_node* typecasting(){
 			addChild(n, createNode(R));
 			addChild(n, createNode(MAEK));
 			if(curType == TOK_IDENT){
-				s = createNode(IDENT);
-				s->string_val = (*cur)->lexeme;
-				addChild(n, s);
+				addChildNoIncrement(n, var_val());
 				if(curType == TOK_TYPE){
-					s = createNode(TYPE);
-					s->string_val = (*cur)->lexeme;
-					addChild(n, s);
+					addChildNoIncrement(n, var_val());
 				} else {
 					syntaxError("Expected type literal after identifier in typecast");
 				}
@@ -625,11 +617,17 @@ ast_node* single_stmt(){
 			break;
 		case TOK_IDENT: /* varident R <var_val>*/
 			printf("IDENT: Found stmt beginning with ident\n");
-			if(nextType == TOK_R){
-				addChildNoIncrement(n, assignment());
-				break;
-			} else {
-				printf("IDENT Not assign statement\n");
+			if((*cur)->tok_id < lastTokIdx){
+				if(nextType == TOK_R){
+					if((*cur)->tok_id < lastTokIdx-1){
+						if((*(cur+2))->type != TOK_MAEK){
+							addChildNoIncrement(n, assignment());
+							break;
+						} else {
+							printf("IDENT Not assign statement\n");
+						}
+					} 
+				} 
 			}
 		default:
 			printf("Reached end of single_stmt\n");
@@ -999,7 +997,7 @@ int main(){
 	listTokens(tokList);
 
 	cur = tokList->tokens;
-	FILE *outfile = fopen("tree.txt","w");
+	FILE *outfile = fopen("expr_tree.txt","w");
 	ast_node* root = program(tokList, tokList->numTokens);
 	// printf("ROOT HAS %d children\n", root->numChildren);
 	print_ast_root_f(root, outfile);
