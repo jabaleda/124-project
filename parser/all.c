@@ -29,7 +29,6 @@
 			- checks if there are more statements
 			- checks for KTHXBYE (assumes no more statements then error pag may token pa past KTHXBYE)
 		6) no infinite boolean yet
-		7) issues with infinite arity in general (smoosh only has 2 operands atm)
 		8) something sa terminals
 			ex: for a <var_val> that evaluates to INTEGER node should it have a child with no type and only a value
 				example value = 5: para maproduce sa tree na <var_val> -> INTEGER -> 5
@@ -50,12 +49,6 @@
 	change to var_dec
 	var_dec ::= I HAS A varident | I HAS A varident ITZ <var_value>
 				I HAS A varident <var_dec> | I HAS A varident ITZ <var_value> <var_dec>
-*/
-
-/*
-	Try to implement bonuses:
-		1) MEBBE clause (else if) in if-else
-		2) I *think* gagana if-else nesting based sa grammar
 */
 
 #define curType (*cur)->type
@@ -81,12 +74,12 @@ ast_node* createNode(int type){
 }
 
 void addTrace(ast_node* parent, ast_node* child){
-	if((*cur)->tok_id < lastTokIdx-1){
-		// printf("Added %s as child of %s. Current token: %s	Next token (Post-increment): %s\n", string_ver[child->type], string_ver[parent->type], string_ver[curType], string_ver[nextType]);
-		printf("Added %s as child of %s. Current token: %s\n", string_ver[child->type], string_ver[parent->type], string_ver[curType]);
-	} else {
-		printf("Added %s as child of %s.\n", string_ver[child->type], string_ver[parent->type]);
-	}
+	// if((*cur)->tok_id < lastTokIdx-1){
+	// 	// printf("Added %s as child of %s. Current token: %s	Next token (Post-increment): %s\n", string_ver[child->type], string_ver[parent->type], string_ver[curType], string_ver[nextType]);
+	// 	printf("Added %s as child of %s. Current token: %s\n", string_ver[child->type], string_ver[parent->type], string_ver[curType]);
+	// } else {
+	// 	printf("Added %s as child of %s.\n", string_ver[child->type], string_ver[parent->type]);
+	// }
 }
 
 /* Add a child node and increment token array pointer*/
@@ -100,7 +93,7 @@ void addChild(ast_node* parent, ast_node* child){
 	}
 	parent->children[parent->numChildren] = child;
 	parent->numChildren++;
-	// addTrace(parent, child);
+	addTrace(parent, child);
 	cur++;
 }
 
@@ -119,7 +112,7 @@ void addChildNoIncrement(ast_node* parent, ast_node* child){
 	}
 	parent->children[parent->numChildren] = child;
 	parent->numChildren++;
-	// addTrace(parent, child);
+	addTrace(parent, child);
 }
 
 void syntaxError(char *msg){
@@ -127,40 +120,90 @@ void syntaxError(char *msg){
 	exit(1);
 }
 
+/* Use for debugging only, traces parse sequence to identify current function, token, lexeme, and line*/
 void trace(char* msg, char* node){
-	// printf("Trace: %s	In: %s\n		Current Token: %s	Lexeme: %s	Line: %d\n\n", msg, node, string_ver[curType], (*cur)->lexeme,(*cur)->line);
+	printf("Trace: %s	In: %s\n		Current Token: %s	Lexeme: %s	Line: %d\n\n", msg, node, string_ver[curType], (*cur)->lexeme,(*cur)->line);
 }
 
 /*
 	Finite Automata? to parse token list and build AST
 */
+ast_node* program(TokenList* tokenList, int numTokens){
+	ast_node* n;
+	if(curType == TOK_HAI){
+		n = createNode(PROG);
+		// trace("Start", string_ver[n->type]);
+		addChild(n, createNode(HAI));
+		if(curType == TOK_WAZZUP){
+			addChild(n, createNode(WAZZUP));
+			if(curType == TOK_I_HAS_A){					// Found var dec statement
+				// trace("Found var_dec", string_ver[n->type]);
+				addChildNoIncrement(n, var_dec());
+				// trace("End of var_decs", string_ver[n->type]);
+					if(curType == TOK_BUHBYE){
+						addChild(n, createNode(BUHBYE));
+						// next token in list is not KTHXBYE, expect statement
+						if(curType == TOK_KTHXBYE){			
+							addChildNoIncrement(n, createNode(KTHXBYE));
+						} else {
+							// trace("Found statement, after in var_dec", string_ver[n->type]);
+							addChildNoIncrement(n, stmt());
+							addChildNoIncrement(n, createNode(KTHXBYE));
+						}
+					} else {
+						syntaxError("Unexpected token");
+					}
+			} else if(curType == TOK_BUHBYE){		// No vars declared
+					// trace("No var dec found", string_ver[n->type]);
+					addChild(n, createNode(BUHBYE));
+				if(curType == TOK_KTHXBYE){			// End of program keyword immediately encountered
+													// Expect no further statements (all tokens consumed)
+					addChildNoIncrement(n, createNode(KTHXBYE));
+				} else {
+					// trace("Found stmt after in no var_dec", string_ver[n->type]);
+					addChildNoIncrement(n, stmt());
+					addChildNoIncrement(n, createNode(KTHXBYE));
+				}
+			} else {
+				syntaxError("Expected variable assignment or BUHBYE");
+			}
+		}
+	} else {
+		syntaxError("Expected HAI");
+	}
+
+	if((*cur)->tok_id < lastTokIdx){	// Not all tokens consumed after KTHXBYE keyword encountered
+		syntaxError("Unexpected statement past end of program 'KTHXBYE'");
+	}
+	printf("Done parsing.\n");
+	return n;
+}
+
 ast_node* var_dec(){
-	ast_node* n = createNode(VAR_DEC), *s;
+	ast_node* n = createNode(VAR_DEC);
 	do{
-		trace("Found I HAS A", string_ver[n->type]);
+		// trace("Found I HAS A", string_ver[n->type]);
 		addChild(n, createNode(I_HAS_A));
+		//  check for following identifier
 		if(curType == TOK_IDENT){
 			addChildNoIncrement(n, var_val());
-			trace("Returned from first ident in var_dec", string_ver[n->type]);
-			if(curType == TOK_ITZ){		// Variable declaration has initialization
+			// trace("Returned from first ident in var_dec", string_ver[n->type]);
+			// check for initialization
+			if(curType == TOK_ITZ){		
 				addChild(n, createNode(ITZ));
 				addChildNoIncrement(n, var_val());
 			}
 		} else {
 			syntaxError("Expected identifier after I HAS A");
 		}
-	} while(curType == TOK_I_HAS_A);
-
-
-
+	} while(curType == TOK_I_HAS_A); // check for further variable declarations
 	trace("Returning var_dec", string_ver[n->type]);
 	return n;
 }
 
 ast_node* var_val(){
 	ast_node *n = createNode(VAR_VAL), *s;
-	// for tracing remove lex variable later !!!
-	trace("", string_ver[n->type]);
+	// trace("", string_ver[n->type]);
 	switch(curType){
 		case TOK_IDENT:
 			s = createNode(IDENT);
@@ -193,7 +236,7 @@ ast_node* var_val(){
 			addChild(n, s);
 			break;
 		default:
-			trace("Reached default", string_ver[n->type]); // !!!
+			// trace("Reached default", string_ver[n->type]); // !!!
 			// check if current token is a keyword to any of the expression statements that return values
 			// else throw error
 			int isExprKeyword = 0;
@@ -204,13 +247,87 @@ ast_node* var_val(){
 				}
 			}
 			if(isExprKeyword){
-				trace("expr keyword found", string_ver[n->type]);
+				// trace("expr keyword found", string_ver[n->type]);
 				addChildNoIncrement(n, expr());
 			} else {
 				if(curType != TOK_MAEK) syntaxError("Expected identifier/literal");
 			}
 	}
-	trace("Returning", string_ver[n->type]);
+	// trace("Returning", string_ver[n->type]);
+	return n;
+}
+
+ast_node* stmt(){
+	ast_node* n, *s;
+	n = createNode(STMT);
+	trace("", string_ver[n->type]);
+
+	if(/*curType != TOK_O_RLY || */ curType == TOK_WTF || curType == TOK_IM_IN_YR || curType == TOK_HOW_IZ_I){
+		addChildNoIncrement(n, compound_stmt());
+	} else {
+		addChildNoIncrement(n, single_stmt());
+	}
+
+	trace("Returning stmt", string_ver[n->type]);
+	return n;
+}
+
+/* single_stmt> ::= <print> | <input> | <expr> | <assignment> | <function_call> | GTFO */
+ast_node* single_stmt(){ 
+	ast_node *n, *s;
+	n = createNode(SINGLE_STMT);
+	trace("Single stmt check", string_ver[n->type]);
+
+	switch(curType){
+		case TOK_VISIBLE:	/* VISIBLE <var_val>*/
+			// printf("VISIBLE FOUND\n");
+			trace("In visible", string_ver[n->type]);
+			addChildNoIncrement(n, print());
+			break;
+		case TOK_GIMMEH:	/* GIMMEH varident*/
+			addChildNoIncrement(n, input());
+			break;
+		case TOK_I_IZ: /* <function_call> ::= I IZ funident MKAY | I IZ funident <argument> MKAY*/
+			addChildNoIncrement(n, function_call());
+			break;
+		case TOK_GTFO:
+			addChild(n, createNode(GTFO));
+			break;
+		case TOK_IDENT: /* varident R <var_val>*/
+			printf("IDENT: Found stmt beginning with ident\n");
+			if((*cur)->tok_id < lastTokIdx){
+				if(nextType == TOK_R){
+					if((*cur)->tok_id < lastTokIdx-1){
+						if((*(cur+2))->type != TOK_MAEK){
+							addChildNoIncrement(n, assignment());
+							break;
+						} else {
+							printf("IDENT Not assign statement\n");
+						}
+					} 
+				} 
+			}
+		default:
+			printf("Reached end of single_stmt\n");
+			addChildNoIncrement(n, expr());
+			// try compound addChild()
+	}
+
+	if(	curType == TOK_OMG 
+		|| curType == TOK_OMGWTF
+		|| curType == TOK_OIC
+		|| curType == TOK_IM_OUTTA_YR
+		|| curType == TOK_IF_U_SAY_SO
+	){
+		trace("Start/End keyword of compound stmt block found", string_ver[n->type]);
+		return n;
+	}
+
+	if(curType != TOK_KTHXBYE){	// end of program not encountered, check for <stmt> ::= <single_stmt> <stmt>
+		trace("KTHXBYE not found, expecting more statements", string_ver[n->type]);
+		addChildNoIncrement(n, stmt());
+	}
+	trace("Returning single statement", string_ver[n->type]);
 	return n;
 }
 
@@ -233,7 +350,6 @@ ast_node* input(){
 	} else {
 		syntaxError("Expected Identifier in GIMMEH");
 	}
-
 	return n;
 }
 
@@ -252,11 +368,10 @@ ast_node* assignment(){
 }
 
 ast_node* function_call(){
-	ast_node* n = createNode(I_IZ), *s;
+	ast_node* n = createNode(FUNCTION_CALL), *s;
+	addChild(n, createNode(I_IZ));
 	if(curType == TOK_IDENT){
-		s = createNode(IDENT);
-		s->id_name = (*cur)->lexeme;
-		addChild(n, s);
+		addChildNoIncrement(n, var_val());
 		if(curType == TOK_MKAY){		// no args
 			addChild(n, createNode(MKAY));
 		} else if(curType == TOK_YR){	// has args
@@ -265,14 +380,21 @@ ast_node* function_call(){
 			// else assumes arguments are being passed
 			if(curType != TOK_MKAY){
 				addChildNoIncrement(n, var_val());
-				while(curType != TOK_MKAY){
-					if(curType == TOK_AN){
-						addChild(n, createNode(AN));
-						addChildNoIncrement(n, var_val());
-					} else {
-						syntaxError("Expected AN arg separator");
-					}
-				}
+
+				do{
+					addChild(n, createNode(AN));
+					addChildNoIncrement(n, var_val());
+					trace("In function_call arg loop", string_ver[n->type]);
+				}while(curType == TOK_AN);
+
+				// while(curType != TOK_MKAY){
+				// 	if(curType == TOK_AN){
+				// 		addChild(n, createNode(AN));
+				// 		addChildNoIncrement(n, var_val());
+				// 	} else {
+				// 		syntaxError("Expected AN arg separator");
+				// 	}
+				// }
 			}
 			// exited while loop, current token must be MKAY
 			if(curType == TOK_MKAY){
@@ -421,7 +543,7 @@ ast_node* relational(){
 				syntaxError("Expected arg separator AN in binary relational");
 			}	
 			break;
-		case TOK_IDENT:
+		default:
 			addChildNoIncrement(n, var_val());
 	}
 	return n;
@@ -431,6 +553,7 @@ ast_node* relational(){
 ast_node* comparison(){
 	ast_node* n;
 	n = createNode(COMPARISON);
+	trace("In comparison", string_ver[n->type]);
 	switch(curType){
 		case TOK_BOTH_SAEM:
 			addChild(n, createNode(BOTH_SAEM));
@@ -541,6 +664,17 @@ ast_node* expr(){
 		printf("Next token: %s\n", string_ver[nextType]);
 	}
 
+	// switch(curType){
+	// 	case TOK_IDENT:
+	// 		break;
+	// 	case TOK_SUM_OF:
+	// 	case TOK_QUOSHUNT_OF:
+	// 	case TOK_PRODUKT_OF:
+	// 	case TOK_MOD_OF:
+	// 	case TOK_DIFF_OF:
+
+	// }
+
 	if(curType == TOK_SMOOSH){
 		addChildNoIncrement(n, concatenation());
 	}
@@ -567,11 +701,6 @@ ast_node* expr(){
 	if(curType == TOK_BOTH_SAEM || curType == TOK_DIFFRINT){
 		addChildNoIncrement(n, comparison());
 	}
-	
-	if(curType == TOK_BIGGR_OF || curType == TOK_SMALLR_OF){
-		addChildNoIncrement(n, relational());
-	}
-	
 	if(curType == TOK_MAEK) {
 		addChildNoIncrement(n, typecasting());
 	}
@@ -582,11 +711,13 @@ ast_node* expr(){
 			addChildNoIncrement(n, typecasting());
 		}
 	}
-	
 	if((*cur)->tok_id < lastTokIdx-1){
 		if(curType == TOK_IDENT && nextType == TOK_R && (*(cur+2))->type == TOK_MAEK){
 			addChildNoIncrement(n, typecasting());
 		}
+	}
+	if(curType == TOK_BIGGR_OF || curType == TOK_SMALLR_OF){
+		addChildNoIncrement(n, relational());
 	} else {
 		if(curType == TOK_IDENT) syntaxError("Unexpected identifier/literal");
 	}
@@ -595,66 +726,39 @@ ast_node* expr(){
 	return n;
 }
 
-/* single_stmt> ::= <print> | <input> | <expr> | <assignment> | <function_call> | GTFO */
-ast_node* single_stmt(){ 
-	ast_node *n, *s;
-	n = createNode(SINGLE_STMT);
-	trace("Single stmt check", string_ver[n->type]);
 
-	switch(curType){
-		case TOK_VISIBLE:	/* VISIBLE <var_val>*/
-			// printf("VISIBLE FOUND\n");
-			addChildNoIncrement(n, print());
-			break;
-		case TOK_GIMMEH:	/* GIMMEH varident*/
-			addChildNoIncrement(n, input());
-			break;
-		case TOK_I_IZ: /* <function_call> ::= I IZ funident MKAY | I IZ funident <argument> MKAY*/
-			addChildNoIncrement(n, function_call());
-			break;
-		case TOK_GTFO:
-			addChild(n, createNode(GTFO));
-			break;
-		case TOK_IDENT: /* varident R <var_val>*/
-			printf("IDENT: Found stmt beginning with ident\n");
-			if((*cur)->tok_id < lastTokIdx){
-				if(nextType == TOK_R){
-					if((*cur)->tok_id < lastTokIdx-1){
-						if((*(cur+2))->type != TOK_MAEK){
-							addChildNoIncrement(n, assignment());
-							break;
-						} else {
-							printf("IDENT Not assign statement\n");
-						}
-					} 
-				} 
-			}
-		default:
-			printf("Reached end of single_stmt\n");
-			addChildNoIncrement(n, expr());
-			// try compound addChild()
-	}
-
-	if(curType != TOK_KTHXBYE){	// end of program not encountered, check for <stmt> ::= <single_stmt> <stmt>
-		addChild(n, stmt());
-	}
-	trace("Returning single statement", string_ver[n->type]);
-	return n;
-}
 
 ast_node* compound_stmt(){
 	ast_node* n;
 	n = createNode(COMPOUND_STMT);
-
-	if(nextType == TOK_O_RLY){ // check for if
-		switch(curType){
-
-		}
-	} else {}
+	trace("", string_ver[n->type]);
 
 
+	switch(curType){
+		case TOK_WTF:
+			addChildNoIncrement(n, switch_case());
+			break;
+		case TOK_IM_IN_YR:
+			addChildNoIncrement(n, loop());
+			break;
+		case TOK_HOW_IZ_I:
+			addChildNoIncrement(n, function_definition());
+			break;
+		default:
+	}
 
-	return NULL;
+	// if(nextType == TOK_O_RLY){ // check for if
+	// 	switch(curType){
+
+	// 	}
+	// } else {}
+
+	printf("Before return cmpd_stmt cur token: %s\n", string_ver[curType]);
+	if(curType != TOK_KTHXBYE){	// end of program not encountered, check for <stmt> ::= <single_stmt> <stmt>
+		addChild(n, stmt());
+	}
+	trace("Returning cmpd_statement", string_ver[n->type]);
+	return n;
 }
 
 // switch
@@ -662,14 +766,15 @@ ast_node* compound_stmt(){
 ast_node* switch_case(){
 	ast_node* n = createNode(SWITCH_CASE);
 	addChild(n, createNode(WTF));
-	cur++;
 	if(curType == TOK_OMG){
-		addChild(n, case_block());
+		addChildNoIncrement(n, case_block());
 	}
-	cur++;
+	trace("Exited tok_omg check",string_ver[n->type]);
 	if(curType == TOK_OMGWTF){ // check for default block keyword
-		addChild(n, default_block());
+		trace("Found omgwtf", string_ver[n->type]);
+		addChildNoIncrement(n, default_block());
 	}
+	trace("Returning switch_case", string_ver[n->type]);
 	addChild(n, createNode(OIC));
 	return n;
 }
@@ -677,67 +782,56 @@ ast_node* switch_case(){
 ast_node* case_block(){
 	ast_node* n = createNode(CASE_BLOCK), *s;
 	do{
+		trace("", string_ver[n->type]);
 		addChild(n, createNode(OMG));
-		cur++;
 		switch(curType){
 			case TOK_INTEGER:
-				s = createNode(INTEGER);
-				s->num_val = atoi((*cur)->lexeme);
-				addChild(n, s);
-				cur++;
-				addChild(n, stmt());
+				addChildNoIncrement(n, var_val());
+				trace("In INTEGER", string_ver[n->type]);
+				addChildNoIncrement(n, stmt());
 				break;
 			case TOK_FLOAT:
-				s = createNode(FLOAT);
-				s->num_val = atof((*cur)->lexeme);
-				addChild(n, s);
-				cur++;
-				addChild(n, stmt());
+				addChildNoIncrement(n, var_val());
+				addChildNoIncrement(n, stmt());
 				break;
 			case TOK_STRING:
-				s = createNode(INTEGER);
-				s->string_val = (*cur)->lexeme;
-				addChild(n, s);
-				cur++;
-				addChild(n, stmt());
+				addChildNoIncrement(n, var_val());
+				addChildNoIncrement(n, stmt());
+				break;
+			case TOK_BOOLEAN:
+				addChildNoIncrement(n, var_val());
+				addChildNoIncrement(n, stmt());
 				break;
 			case TOK_TYPE:
-				s = createNode(INTEGER);
-				s->string_val = (*cur)->lexeme;
-				addChild(n, s);
-				cur++;
-				addChild(n, stmt());
+				addChildNoIncrement(n, var_val());
+				addChildNoIncrement(n, stmt());
 				break;
 			default:
 				syntaxError("Expected literal after OMG");
 		}
-		if(nextType == TOK_GTFO){  // if case_block has break, consume and create node
-			cur++;
-			addChild(n, createNode(GTFO));
+		if((*cur)->tok_id < lastTokIdx){
+			printf("Checking for gtfo in case_block, curtokid: %d, lasttok: %d\n", (*cur)->tok_id ,lastTokIdx);
+			if(nextType == TOK_GTFO){  // if case_block has break, consume and create node
+				addChild(n, createNode(GTFO));
+			}
 		}
-		cur++;	
 	} while(curType == TOK_OMG); // check for further case
-
+	trace("Returning case_block",string_ver[n->type]);
 	return n;
 }
 
 ast_node* default_block(){
 	ast_node* n = createNode(DEFAULT_BLOCK);
 	addChild(n, createNode(OMGWTF));
-	addChild(n, stmt());
+	addChildNoIncrement(n, stmt());
 	return n;
 }
 
 ast_node* loop(){
 	ast_node* n = createNode(LOOP), *s;
 	addChild(n, createNode(IM_IN_YR));
-	cur++;
-	if(nextType == TOK_IDENT){
-		s = createNode(IDENT);
-		s->string_val = (*cur)->lexeme;
-		addChild(n, s);
-		// slight change to grammar, removing loop_var_operation
-		cur++;
+	if(curType == TOK_IDENT){
+		addChildNoIncrement(n, var_val());
 		if(curType == TOK_UPPIN){
 			addChild(n, createNode(UPPIN));		
 		} else if(curType == TOK_NERFIN){
@@ -745,79 +839,73 @@ ast_node* loop(){
 		} else {
 			syntaxError("Expected UPPIN/NERFIN after loop identifier");
 		}
-		cur++;
 		if(curType == TOK_YR){
 			addChild(n, createNode(YR));
 		} else {
 			syntaxError("Expected YR in loop after UPPIN/NERFIN");
 		}
-		cur++;
 		if(curType == TOK_IDENT){
-			s = createNode(IDENT);
-			s->string_val = (*cur)->lexeme;
-			addChild(n, s);
+			addChildNoIncrement(n, var_val());
 		} else {
 			syntaxError("Expected loop iterator identifier after UPPIN/NERFIN");
 		}
-		cur++;
 		// check for break_condition (TIL/WILE keyword)
 		// if either is found, check if break condition is boolean or comparison expr
 		if(curType == TOK_TIL){ 
 			addChild(n, createNode(TIL));
 			if(curType != TOK_BOTH_SAEM && curType != TOK_DIFFRINT){  // if not comparison
-				addChild(n, comparison());
+				addChildNoIncrement(n, comparison());
 			} else { // must be boolean
-				addChild(n, boolean());
+				addChildNoIncrement(n, boolean());
 			}
-			addChild(n, stmt());
+			addChildNoIncrement(n, stmt());
 		} else if(curType == TOK_WILE){
 			addChild(n, createNode(WILE));
 			if(curType != TOK_BOTH_SAEM && curType != TOK_DIFFRINT){  // if not comparison
-				addChild(n, comparison());
+				addChildNoIncrement(n, comparison());
 			} else { // must be boolean
-				addChild(n, boolean());
+				addChildNoIncrement(n, boolean());
 			}
-			addChild(n, stmt());
+			addChildNoIncrement(n, stmt());
 		} else{
-			addChild(n, stmt());
+			addChildNoIncrement(n, stmt());
 		}
-		cur++;
 		if(curType == TOK_IM_OUTTA_YR){
 			addChild(n, createNode(IM_OUTTA_YR));
 		} else {
 			syntaxError("Expected loop exit keyword IM OUTTA YR");
 		}
-		cur++;
 		if(curType == TOK_IDENT){
-			s = createNode(IDENT);
-			s->string_val = (*cur)->lexeme;
-			addChild(n, s);
+			addChildNoIncrement(n, var_val());
 		} else {
 			syntaxError("Expected loop identifier after IM OUTTA YR");
 		}
 	} else {
 		syntaxError("Expected loop identifier after IM IN YR");
 	}
-
 	return n;
 }
 
 ast_node* function_definition(){
 	ast_node* n = createNode(FUNCTION_DEFINITION), *s;
 	addChild(n, createNode(HOW_IZ_I));
-	cur++;
 	if(curType == TOK_IDENT){
-		s = createNode(IDENT);
-		s->string_val = (*cur)->lexeme;
-		addChild(n, s);
+		addChildNoIncrement(n, var_val());
 	} else {
 		syntaxError("Expected identifier after HOW IZ I");
 	}
-	if(nextType == TOK_YR){ // check for parameter
-		addChild(n, parameter());
+	
+	// check for parameter
+	if(curType == TOK_YR){
+		addChildNoIncrement(n, parameter());
 	}
-	addChild(n, stmt());
-	cur++;
+	
+	// If 'IF U SAY SO' not found, assume there are statements in function body
+	if(curType != TOK_IF_U_SAY_SO){
+		addChildNoIncrement(n, stmt());
+	}
+	
+	// Expect 'IF U SAY SO'
 	if(curType == TOK_IF_U_SAY_SO){
 		addChild(n, createNode(IF_U_SAY_SO));
 	} else {
@@ -827,19 +915,24 @@ ast_node* function_definition(){
 }
 
 ast_node* parameter(){
-	ast_node* n = createNode(PARAMETER), *s;
-	do{
-		cur++;
-		addChild(n, createNode(YR));
-		cur++;
-		if(curType == TOK_IDENT){
-			s = createNode(IDENT);
-			s->string_val = (*cur)->lexeme;
-			addChild(n, s);
-		} else {
-			syntaxError("Expected param identifier after YR in function definition");
-		}
-	}while(nextType == TOK_YR);
+	ast_node* n = createNode(PARAMETER);
+	addChild(n, createNode(YR));
+	if(curType == TOK_IDENT){
+		addChildNoIncrement(n, var_val());
+	} else {
+		syntaxError("Expected parameter identifier after YR in function definition");
+	}
+	
+	if(curType == TOK_AN){
+		do{
+			addChild(n, createNode(AN));
+			if(curType == TOK_IDENT){
+				addChildNoIncrement(n, var_val());
+			} else {
+				syntaxError("Expected parameter identifier after AN in function definition");
+			}
+		}while(curType == TOK_AN);
+	}
 
 	return n;
 }
@@ -873,70 +966,6 @@ ast_node* branches_block(){
 
 }
 
-ast_node* stmt(){
-	ast_node* n, *s;
-	n = createNode(STMT);
-	trace("", string_ver[n->type]);
-
-	if(/*curType != TOK_O_RLY || */ curType == TOK_WTF || curType == TOK_IM_IN_YR || curType == TOK_HOW_IZ_I){
-		addChildNoIncrement(n, compound_stmt());
-	} else {
-		addChildNoIncrement(n, single_stmt());
-	}
-
-	trace("Returning stmt", string_ver[n->type]);
-	return n;
-}
-
-ast_node* program(TokenList* tokenList, int numTokens){
-	ast_node* n;
-	if(curType == TOK_HAI){
-		n = createNode(PROG);
-		trace("Start", string_ver[n->type]);
-		addChild(n, createNode(HAI));
-		if(curType == TOK_WAZZUP){
-			addChild(n, createNode(WAZZUP));
-			if(curType == TOK_I_HAS_A){					// Found var dec statement
-				trace("Found var_dec", string_ver[n->type]);
-				addChildNoIncrement(n, var_dec());
-				trace("End of var_decs", string_ver[n->type]);
-					if(curType == TOK_BUHBYE){
-						addChild(n, createNode(BUHBYE));
-						if(curType == TOK_KTHXBYE){			// next token in list is not KTHXBYE, expect statement
-							addChildNoIncrement(n, createNode(KTHXBYE));
-						} else {
-							trace("Found statement, after in var_dec", string_ver[n->type]);
-							addChildNoIncrement(n, stmt());
-							addChildNoIncrement(n, createNode(KTHXBYE));
-						}
-					} else {
-						syntaxError("Unexpected token");
-					}
-			} else if(curType == TOK_BUHBYE){		// No vars declared
-					trace("No var dec found", string_ver[n->type]);
-					addChild(n, createNode(BUHBYE));
-				if(curType == TOK_KTHXBYE){			// End of program keyword immediately encountered
-													// Expect no further statements (all tokens consumed)
-					addChildNoIncrement(n, createNode(KTHXBYE));
-				} else {
-					trace("Found stmt after in no var_dec", string_ver[n->type]);
-					addChildNoIncrement(n, stmt());
-					addChildNoIncrement(n, createNode(KTHXBYE));
-				}
-			} else {
-				syntaxError("Expected variable assignment or BUHBYE");
-			}
-		}
-	} else {
-		syntaxError("Expected HAI");
-	}
-
-	if(cur < &tokenList->tokens[numTokens-1]){	// Not all tokens consumed after KTHXBYE keyword encountered
-		syntaxError("Unexpected statement past end of program 'KTHXBYE'");
-	}
-	printf("Done parsing.\n");
-	return n;
-}
 
 // preorder traversal
 void visit(ast_node* node){
@@ -992,12 +1021,12 @@ void listTokens(TokenList* list){
 int main(){
 	LexemeList* lexList = lex();
 	TokenList* tokList = tokenize(lexList);
-	lastTokIdx = tokList->numTokens;
+	lastTokIdx = tokList->numTokens-1;
 	cur = tokList->tokens;
 	listTokens(tokList);
 
 	cur = tokList->tokens;
-	FILE *outfile = fopen("expr_tree.txt","w");
+	FILE *outfile = fopen("tree.txt","w");
 	ast_node* root = program(tokList, tokList->numTokens);
 	// printf("ROOT HAS %d children\n", root->numChildren);
 	print_ast_root_f(root, outfile);

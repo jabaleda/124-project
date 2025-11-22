@@ -884,6 +884,7 @@ ast_node* parameter();
 ast_node* argument();
 ast_node* if_else();
 ast_node* branches_block();
+ast_node* function_call();
 
 /*////////////////////////////////////////////////////////////////////////*/
 // void print_ast(const ast_node *node, const char *prefix, int is_last) {
