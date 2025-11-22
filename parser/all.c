@@ -61,8 +61,6 @@ Token** cur;
 /* Total number of nodes in AST*/
 int numNodes = 0;
 
-// ast_node* ;
-// ast_node* ;
 ast_node* createNode(int type){
 	ast_node* newNode = malloc(sizeof(ast_node));
 	newNode->node_id = numNodes;
@@ -73,6 +71,7 @@ ast_node* createNode(int type){
 	return newNode;
 }
 
+/* For tracing adds */
 void addTrace(ast_node* parent, ast_node* child){
 	// if((*cur)->tok_id < lastTokIdx-1){
 	// 	// printf("Added %s as child of %s. Current token: %s	Next token (Post-increment): %s\n", string_ver[child->type], string_ver[parent->type], string_ver[curType], string_ver[nextType]);
@@ -258,7 +257,7 @@ ast_node* var_val(){
 }
 
 ast_node* stmt(){
-	ast_node* n, *s;
+	ast_node* n;
 	n = createNode(STMT);
 	trace("", string_ver[n->type]);
 
@@ -276,12 +275,12 @@ ast_node* stmt(){
 ast_node* single_stmt(){ 
 	ast_node *n, *s;
 	n = createNode(SINGLE_STMT);
-	trace("Single stmt check", string_ver[n->type]);
+	// trace("Single stmt check", string_ver[n->type]);
 
 	switch(curType){
 		case TOK_VISIBLE:	/* VISIBLE <var_val>*/
 			// printf("VISIBLE FOUND\n");
-			trace("In visible", string_ver[n->type]);
+			// trace("In visible", string_ver[n->type]);
 			addChildNoIncrement(n, print());
 			break;
 		case TOK_GIMMEH:	/* GIMMEH varident*/
@@ -294,7 +293,6 @@ ast_node* single_stmt(){
 			addChild(n, createNode(GTFO));
 			break;
 		case TOK_IDENT: /* varident R <var_val>*/
-			printf("IDENT: Found stmt beginning with ident\n");
 			if((*cur)->tok_id < lastTokIdx){
 				if(nextType == TOK_R){
 					if((*cur)->tok_id < lastTokIdx-1){
@@ -302,32 +300,32 @@ ast_node* single_stmt(){
 							addChildNoIncrement(n, assignment());
 							break;
 						} else {
-							printf("IDENT Not assign statement\n");
 						}
 					} 
 				} 
 			}
 		default:
-			printf("Reached end of single_stmt\n");
 			addChildNoIncrement(n, expr());
-			// try compound addChild()
 	}
 
+	// statements being generated within a compound statement body
+	// must eventually encounter keywords indicating either the start
+	// of another block (ex: OMG in switch) or the end of a block (ex: IM OUTTA YR in loop)
 	if(	curType == TOK_OMG 
 		|| curType == TOK_OMGWTF
 		|| curType == TOK_OIC
 		|| curType == TOK_IM_OUTTA_YR
 		|| curType == TOK_IF_U_SAY_SO
 	){
-		trace("Start/End keyword of compound stmt block found", string_ver[n->type]);
+		// trace("Start/End keyword of compound stmt block found", string_ver[n->type]);
 		return n;
 	}
 
 	if(curType != TOK_KTHXBYE){	// end of program not encountered, check for <stmt> ::= <single_stmt> <stmt>
-		trace("KTHXBYE not found, expecting more statements", string_ver[n->type]);
+		// trace("KTHXBYE not found, expecting more statements", string_ver[n->type]);
 		addChildNoIncrement(n, stmt());
 	}
-	trace("Returning single statement", string_ver[n->type]);
+	// trace("Returning single statement", string_ver[n->type]);
 	return n;
 }
 
@@ -340,13 +338,11 @@ ast_node* print(){
 }
 
 ast_node* input(){
-	ast_node *n, *s;
+	ast_node *n;
 	n = createNode(INPUT);
 	addChild(n, createNode(GIMMEH));
 	if(curType == IDENT) {
-		s = createNode(IDENT);
-		s->id_name = (*cur)->lexeme;
-		addChild(n, s);
+		addChildNoIncrement(n, var_val());
 	} else {
 		syntaxError("Expected Identifier in GIMMEH");
 	}
@@ -354,9 +350,9 @@ ast_node* input(){
 }
 
 ast_node* assignment(){
-	ast_node *n, *s;
+	ast_node *n;
 	n = createNode(ASSIGNMENT);
-	trace("", string_ver[n->type]);
+	// trace("", string_ver[n->type]);
 	addChildNoIncrement(n, var_val());
 	if(curType == TOK_R){
 		addChild(n, createNode(R));
@@ -380,23 +376,13 @@ ast_node* function_call(){
 			// else assumes arguments are being passed
 			if(curType != TOK_MKAY){
 				addChildNoIncrement(n, var_val());
-
 				do{
 					addChild(n, createNode(AN));
 					addChildNoIncrement(n, var_val());
-					trace("In function_call arg loop", string_ver[n->type]);
+					// trace("In function_call arg loop", string_ver[n->type]);
 				}while(curType == TOK_AN);
-
-				// while(curType != TOK_MKAY){
-				// 	if(curType == TOK_AN){
-				// 		addChild(n, createNode(AN));
-				// 		addChildNoIncrement(n, var_val());
-				// 	} else {
-				// 		syntaxError("Expected AN arg separator");
-				// 	}
-				// }
 			}
-			// exited while loop, current token must be MKAY
+			// exited while loop, expect MKAY
 			if(curType == TOK_MKAY){
 				addChild(n, createNode(MKAY));
 			} else {
@@ -408,6 +394,66 @@ ast_node* function_call(){
 	} else {
 		syntaxError("Expected identifier after I IZ");
 	}
+	return n;
+}
+
+ast_node* expr(){
+	ast_node *n, *s;
+	n = createNode(EXPR);
+	trace("Check expr", string_ver[n->type]);
+	int type = curType;
+	if((*cur)->tok_id < lastTokIdx){
+		printf("Next token: %s\n", string_ver[nextType]);
+	}
+
+	if(curType == TOK_SMOOSH){
+		addChildNoIncrement(n, concatenation());
+	}
+
+	if(  curType == TOK_SUM_OF 
+			|| curType == TOK_DIFF_OF 
+			|| curType == TOK_PRODUKT_OF 
+			|| curType == TOK_QUOSHUNT_OF 
+			|| curType == TOK_MOD_OF)
+	{
+		addChildNoIncrement(n, arithmetic());
+	}
+
+	if(curType == TOK_NOT 
+			|| curType == TOK_BOTH_OF 
+			|| curType == TOK_EITHER_OF
+			|| curType == TOK_WON_OF 
+			|| curType == TOK_ALL_OF 
+			|| curType == TOK_ANY_OF)
+	{
+		addChildNoIncrement(n, boolean());
+	}
+
+	if(curType == TOK_BOTH_SAEM || curType == TOK_DIFFRINT){
+		addChildNoIncrement(n, comparison());
+	}
+	if(curType == TOK_MAEK) {
+		addChildNoIncrement(n, typecasting());
+	}
+		// extension of <typecasting>, does lookahead to distinguish from assignment which also has a rule starting with varident
+		// does extra checks to prevent trying to lookahead past last element of token list
+	if((*cur)->tok_id < lastTokIdx){
+		if(curType == TOK_IDENT && nextType == TOK_IS_NOW_A) {
+			addChildNoIncrement(n, typecasting());
+		}
+	}
+	if((*cur)->tok_id < lastTokIdx-1){
+		if(curType == TOK_IDENT && nextType == TOK_R && (*(cur+2))->type == TOK_MAEK){
+			addChildNoIncrement(n, typecasting());
+		}
+	}
+	if(curType == TOK_BIGGR_OF || curType == TOK_SMALLR_OF){
+		addChildNoIncrement(n, relational());
+	} else {
+		if(curType == TOK_IDENT) syntaxError("Unexpected identifier/literal");
+	}
+
+	trace("Returning expression", string_ver[n->type]);
 	return n;
 }
 
@@ -517,11 +563,41 @@ ast_node* boolean(){
 	return n;
 }
 
+/* Rules: <comparison> ::= (BOTH SAEM | BOTH DIFFRINT) <var_val> AN <var_val>*/
+ast_node* comparison(){
+	ast_node* n;
+	n = createNode(COMPARISON);
+	// trace("In comparison", string_ver[n->type]);
+	switch(curType){
+		case TOK_BOTH_SAEM:
+			addChild(n, createNode(BOTH_SAEM));
+			addChildNoIncrement(n, var_val());
+			if(curType == TOK_AN){
+				addChild(n, createNode(AN));
+				addChildNoIncrement(n, relational());
+			} else {
+				syntaxError("Expected arg separator AN in binary comparison");
+			}
+			break;
+		case TOK_DIFFRINT:
+			addChild(n, createNode(DIFFRINT));
+			addChildNoIncrement(n, var_val());
+			if(curType == TOK_AN){
+				addChild(n, createNode(AN));
+				addChildNoIncrement(n, relational());
+			} else {
+				syntaxError("Expected arg separator AN in binary comparison");
+			}
+			break;
+	}
+	return n;
+}
+
 /* <relational> ::= <var_val> | (BIGGR OF | SMALLR OF) <valr_val> AN <var_val>*/
 ast_node* relational(){
 	ast_node* n;
 	n = createNode(RELATIONAL);
-	trace("In ", string_ver[n->type]);
+	// trace("In ", string_ver[n->type]);
 	switch(curType){
 		case TOK_BIGGR_OF:
 			addChild(n, createNode(BIGGR_OF));
@@ -549,67 +625,37 @@ ast_node* relational(){
 	return n;
 }
 
-/* Rules: <comparison> ::= (BOTH SAEM | BOTH DIFFRINT) <var_val> AN <var_val>*/
-ast_node* comparison(){
-	ast_node* n;
-	n = createNode(COMPARISON);
-	trace("In comparison", string_ver[n->type]);
-	switch(curType){
-		case TOK_BOTH_SAEM:
-			addChild(n, createNode(BOTH_SAEM));
-			addChildNoIncrement(n, var_val());
-			if(curType == TOK_AN){
-				addChild(n, createNode(AN));
-				addChildNoIncrement(n, relational());
-			} else {
-				syntaxError("Expected arg separator AN in binary comparison");
-			}
-			break;
-		case TOK_DIFFRINT:
-			addChild(n, createNode(DIFFRINT));
-			addChildNoIncrement(n, var_val());
-			if(curType == TOK_AN){
-				addChild(n, createNode(AN));
-				addChildNoIncrement(n, relational());
-			} else {
-				syntaxError("Expected arg separator AN in binary comparison");
-			}
-			break;
-	}
-	return n;
-}
 
 ast_node* concatenation(){
 	ast_node* n = createNode(CONCATENATION);
 	addChild(n, createNode(SMOOSH));
 	addChildNoIncrement(n, var_val());
 	addChildNoIncrement(n, concat_operand());
-	trace("Returning concatenation node", string_ver[n->type]);
+	// trace("Returning concatenation node", string_ver[n->type]);
 	return n;
 }
 
 ast_node* concat_operand(){
 	ast_node* n = createNode(CONCAT_OPERAND);
-	trace("In concat_operand", string_ver[n->type]);
+	// trace("In concat_operand", string_ver[n->type]);
 	if(curType != TOK_AN){
 		syntaxError("Expected arg separator AN in SMOOSH");
 	}
-
 	do{
 		addChild(n, createNode(AN));
 		addChildNoIncrement(n, var_val());
-		trace("In concat_operand loop", string_ver[n->type]);
+		// trace("In concat_operand loop", string_ver[n->type]);
 	}while(curType == TOK_AN);
-	trace("Outside of concat_operand loop, returning concat_operand node", string_ver[n->type]);
+	// trace("Outside of concat_operand loop, returning concat_operand node", string_ver[n->type]);
 	return n;
 }
 
 /* <typecasting> ::= MAEK varident A type | varident IS NOW A type | varident R MAEK varident type */
 ast_node* typecasting(){
 	ast_node* n = createNode(TYPECASTING), *s;
-	trace("",string_ver[n->type]);
+	// trace("",string_ver[n->type]);
 	if(curType == TOK_MAEK){
-		trace("Entered MAEK format",string_ver[n->type]);
+		// trace("Entered MAEK format",string_ver[n->type]);
 		addChild(n, createNode(MAEK));
 		if(curType == TOK_IDENT){
 			addChildNoIncrement(n, var_val());
@@ -627,7 +673,7 @@ ast_node* typecasting(){
 			syntaxError("Expected identifier after MAEK");
 		}
 	} else if(curType == TOK_IDENT) { // must follow either of (varident IS NOW A type | varident R MAEK varident type)
-		trace("Entered IS NOW A/R MAEK format",string_ver[n->type]);
+		// trace("Entered IS NOW A/R MAEK format",string_ver[n->type]);
 		addChildNoIncrement(n, var_val());
 		if(curType == TOK_IS_NOW_A){
 			addChild(n, createNode(IS_NOW_A));
@@ -654,85 +700,9 @@ ast_node* typecasting(){
 	return n;
 }
 
-
-ast_node* expr(){
-	ast_node *n, *s;
-	n = createNode(EXPR);
-	trace("Check expr", string_ver[n->type]);
-	int type = curType;
-	if((*cur)->tok_id < lastTokIdx){
-		printf("Next token: %s\n", string_ver[nextType]);
-	}
-
-	// switch(curType){
-	// 	case TOK_IDENT:
-	// 		break;
-	// 	case TOK_SUM_OF:
-	// 	case TOK_QUOSHUNT_OF:
-	// 	case TOK_PRODUKT_OF:
-	// 	case TOK_MOD_OF:
-	// 	case TOK_DIFF_OF:
-
-	// }
-
-	if(curType == TOK_SMOOSH){
-		addChildNoIncrement(n, concatenation());
-	}
-
-	if(  curType == TOK_SUM_OF 
-			|| curType == TOK_DIFF_OF 
-			|| curType == TOK_PRODUKT_OF 
-			|| curType == TOK_QUOSHUNT_OF 
-			|| curType == TOK_MOD_OF)
-	{
-		addChildNoIncrement(n, arithmetic());
-	}
-
-	if(curType == TOK_NOT 
-			|| curType == TOK_BOTH_OF 
-			|| curType == TOK_EITHER_OF
-			|| curType == TOK_WON_OF 
-			|| curType == TOK_ALL_OF 
-			|| curType == TOK_ANY_OF)
-	{
-		addChildNoIncrement(n, boolean());
-	}
-
-	if(curType == TOK_BOTH_SAEM || curType == TOK_DIFFRINT){
-		addChildNoIncrement(n, comparison());
-	}
-	if(curType == TOK_MAEK) {
-		addChildNoIncrement(n, typecasting());
-	}
-		// extension of <typecasting>, does lookahead to distinguish from assignment which also has a rule starting with varident
-		// does extra checks to prevent trying to lookahead past last element of token list
-	if((*cur)->tok_id < lastTokIdx){
-		if(curType == TOK_IDENT && nextType == TOK_IS_NOW_A) {
-			addChildNoIncrement(n, typecasting());
-		}
-	}
-	if((*cur)->tok_id < lastTokIdx-1){
-		if(curType == TOK_IDENT && nextType == TOK_R && (*(cur+2))->type == TOK_MAEK){
-			addChildNoIncrement(n, typecasting());
-		}
-	}
-	if(curType == TOK_BIGGR_OF || curType == TOK_SMALLR_OF){
-		addChildNoIncrement(n, relational());
-	} else {
-		if(curType == TOK_IDENT) syntaxError("Unexpected identifier/literal");
-	}
-
-	trace("Returning expression", string_ver[n->type]);
-	return n;
-}
-
-
-
 ast_node* compound_stmt(){
 	ast_node* n;
 	n = createNode(COMPOUND_STMT);
-	trace("", string_ver[n->type]);
-
 
 	switch(curType){
 		case TOK_WTF:
@@ -747,17 +717,10 @@ ast_node* compound_stmt(){
 		default:
 	}
 
-	// if(nextType == TOK_O_RLY){ // check for if
-	// 	switch(curType){
-
-	// 	}
-	// } else {}
-
-	printf("Before return cmpd_stmt cur token: %s\n", string_ver[curType]);
 	if(curType != TOK_KTHXBYE){	// end of program not encountered, check for <stmt> ::= <single_stmt> <stmt>
 		addChild(n, stmt());
 	}
-	trace("Returning cmpd_statement", string_ver[n->type]);
+	// trace("Returning cmpd_statement", string_ver[n->type]);
 	return n;
 }
 
@@ -769,25 +732,25 @@ ast_node* switch_case(){
 	if(curType == TOK_OMG){
 		addChildNoIncrement(n, case_block());
 	}
-	trace("Exited tok_omg check",string_ver[n->type]);
+	// trace("Exited tok_omg check",string_ver[n->type]);
 	if(curType == TOK_OMGWTF){ // check for default block keyword
-		trace("Found omgwtf", string_ver[n->type]);
+		// trace("Found omgwtf", string_ver[n->type]);
 		addChildNoIncrement(n, default_block());
 	}
-	trace("Returning switch_case", string_ver[n->type]);
+	// trace("Returning switch_case", string_ver[n->type]);
 	addChild(n, createNode(OIC));
 	return n;
 }
 
 ast_node* case_block(){
-	ast_node* n = createNode(CASE_BLOCK), *s;
+	ast_node* n = createNode(CASE_BLOCK);
 	do{
-		trace("", string_ver[n->type]);
+		// trace("", string_ver[n->type]);
 		addChild(n, createNode(OMG));
 		switch(curType){
 			case TOK_INTEGER:
 				addChildNoIncrement(n, var_val());
-				trace("In INTEGER", string_ver[n->type]);
+				// trace("In INTEGER", string_ver[n->type]);
 				addChildNoIncrement(n, stmt());
 				break;
 			case TOK_FLOAT:
@@ -810,13 +773,12 @@ ast_node* case_block(){
 				syntaxError("Expected literal after OMG");
 		}
 		if((*cur)->tok_id < lastTokIdx){
-			printf("Checking for gtfo in case_block, curtokid: %d, lasttok: %d\n", (*cur)->tok_id ,lastTokIdx);
 			if(nextType == TOK_GTFO){  // if case_block has break, consume and create node
 				addChild(n, createNode(GTFO));
 			}
 		}
 	} while(curType == TOK_OMG); // check for further case
-	trace("Returning case_block",string_ver[n->type]);
+	// trace("Returning case_block",string_ver[n->type]);
 	return n;
 }
 

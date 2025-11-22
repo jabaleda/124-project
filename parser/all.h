@@ -860,31 +860,33 @@ typedef struct ast_node{
 // states forward dec
 ast_node* program();
 ast_node* stmt();
-ast_node* single_stmt();
-ast_node* compound_stmt();
-ast_node* expr();
 ast_node* var_val();
 ast_node* var_dec();
+ast_node* single_stmt();
 ast_node* print();
 ast_node* input();
+ast_node* assignment();
+ast_node* function_call();
 ast_node* expr();
 ast_node* arithmetic();
 ast_node* boolean();
-ast_node* concat_operand();
 ast_node* comparison();
 ast_node* relational();
+ast_node* concatenation();
+ast_node* concat_operand();
 ast_node* typecasting();
-ast_node* assignment();
+ast_node* compound_stmt();
 ast_node* switch_case();
 ast_node* case_block();
 ast_node* default_block();
 ast_node* loop();
 ast_node* function_definition();
 ast_node* parameter();
-ast_node* argument();
+
+
+// not yet implemented
 ast_node* if_else();
 ast_node* branches_block();
-ast_node* function_call();
 
 /*////////////////////////////////////////////////////////////////////////*/
 // void print_ast(const ast_node *node, const char *prefix, int is_last) {
