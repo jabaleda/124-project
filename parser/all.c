@@ -5,52 +5,6 @@
 #include "all.h"
 
 
-/*
-	Parser Notes/Plans/WIP: (coding ts without testing...)
-		IMPORTANT: curType is compared against TOKENTYPES (prefixed with TOK_) and not SYMBOLS
-				so sa mga pagcheck ng next token, make sure may TOK_
-				opposite naman when creating node using createNode(Symbol s), 
-				takes in SYMBOL (same as token names but without TOK_ prefix)
-		ALSO IMPORTANT: sorry sabog 'to HAHAHAHHAAHHA, DI KO PINLANO NG MAIGI SINIMULAN KO LANG
-						aayusin along the way
-		
-		1) pagsamahin na parts ng syntax and semantic analysis
-			ex: encountered valid var_assign -> add to a symbol table
-			pros: catch agad semantic errors, no need to do separate tree traversal, pdeng diretso run
-			cons: hirap debug; sayang pag may error
-		2) no verbose error message with line + parser terminates when encountering syntax error
-			pros: 
-			cons: premature exit that prevents flagging of other syntax errors further in
-		3) magulo kung san nagiincrement ng cur in some places; switches between before calling function ng symbols or within (necessary for now)
-		4) consider using variable length argument for adding child node to avoid 
-			multiple addChild(node, child) statements (see expr() switch cases)
-		5) does not check kung may linebreak after statements
-			after a statement:
-			- checks if there are more statements
-			- checks for KTHXBYE (assumes no more statements then error pag may token pa past KTHXBYE)
-		6) no infinite boolean yet
-		8) something sa terminals
-			ex: for a <var_val> that evaluates to INTEGER node should it have a child with no type and only a value
-				example value = 5: para maproduce sa tree na <var_val> -> INTEGER -> 5
-		9) on if-else: first of production rule looks for <expr> but checking
-			for if-else atm does not look for expr and only looks for O RLY?
-			possible workaround, if O RLY? is found, check if IT variable has value?? but
-				this means O RLY? would work even if the expression it uses as a condition
-				does not come directly before it and uses the result of some past
-				expr
-		
-
-*/
-
-/*
-	Note on grammar: some production rules seem unnecessary
-		ex: <break_choice> expanding just to TIL or WILE
-		and may be implemented without the abstraction
-	change to var_dec
-	var_dec ::= I HAS A varident | I HAS A varident ITZ <var_value>
-				I HAS A varident <var_dec> | I HAS A varident ITZ <var_value> <var_dec>
-*/
-
 #define curType (*cur)->type
 #define nextType (*(cur+1))->type
 const int EXPR_KEYWORDS[] = {TOK_SUM_OF, TOK_DIFF_OF, TOK_PRODUKT_OF, TOK_QUOSHUNT_OF, TOK_MOD_OF, TOK_NOT, TOK_BOTH_OF, TOK_EITHER_OF, TOK_WON_OF, TOK_ALL_OF, TOK_ANY_OF, TOK_BOTH_SAEM, TOK_DIFFRINT, TOK_BIGGR_OF, TOK_SMALLR_OF, TOK_SMOOSH};
