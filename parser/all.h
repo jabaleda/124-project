@@ -71,6 +71,7 @@ typedef enum{
 	//
 	TOK_IF_U_SAY_SO,
 
+    TOK_PLUS,       // '+' char
     TOK_BREAK
 } TokenType;
 
@@ -206,6 +207,7 @@ typedef enum{
 	//
 	IF_U_SAY_SO,
 
+    PLUS,
     BREAK,
 
 	// Non-terminals
@@ -311,6 +313,7 @@ char* string_ver[] = {
 
 	"IF_U_SAY_SO",
 
+    "PLUS",
     "BREAK",
 
 	"PROG",
@@ -616,6 +619,26 @@ LexemeList* lex(/*FILE* fp*/) {
             // printf("Chars read this turn: %d\n", chars_read);
             continue;
         }
+
+        if(*current_char == '+') {
+            // '+' char for concatenating in VISIBLE statements
+            lexeme_end++;
+            chars_read++;
+            // get substr
+            char substr[2] = "+";
+            substr[1] = '\0';
+            printf("Print concat lexeme: %s\n", substr);
+            Lexeme *newLex = createLexeme(substr, lines_read);
+            addLexemeToList(lexemeList, newLex);
+            // increment lines read count for every newline encountered
+            lines_read++;
+            // add to lexeme list
+            current_char = lexeme_end;
+            // incremement iter + chars read in this loop turn
+            iter += chars_read;
+            // printf("Chars read this turn: %d\n", chars_read);
+            continue;
+        }
             
         // check if '\\' backslash
         if(*current_char == '\n') {
@@ -829,9 +852,11 @@ TokenList* tokenize(LexemeList* list){
             newToken = createToken(TOK_TYPE, "YARN", list->lexemes[i]->line);
         } else if(strcmp(list->lexemes[i]->value, "TROOF") == 0){
             newToken = createToken(TOK_TYPE, "TROOF", list->lexemes[i]->line);
+        } else if(strcmp(list->lexemes[i]->value, "+\0") == 0) {   // newline
+            newToken = createToken(TOK_PLUS, "+", list->lexemes[i]->line);
         } else if(strcmp(list->lexemes[i]->value, "\n\0") == 0) {   // newline
             newToken = createToken(TOK_BREAK, "\\n", list->lexemes[i]->line);
-        }else {
+        } else {
             // Check if keyword
             int type = isKeyword(list, &i);
             if(type != -1){ // if keyword matched
