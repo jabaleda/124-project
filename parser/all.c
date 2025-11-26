@@ -937,16 +937,16 @@ void listTokens(TokenList* list){
 int main(){
 	LexemeList* lexList = lex();
 	TokenList* tokList = tokenize(lexList);
-	lastTokIdx = tokList->numTokens-1;
-	cur = tokList->tokens;
-	listTokens(tokList);
+	// lastTokIdx = tokList->numTokens-1;
+	// cur = tokList->tokens;
+	// listTokens(tokList);
 
-	cur = tokList->tokens;
-	FILE *outfile = fopen("tree.txt","w");
-	ast_node* root = program(tokList, tokList->numTokens);
-	// printf("ROOT HAS %d children\n", root->numChildren);
-	print_ast_root_f(root, outfile);
+	// cur = tokList->tokens;
+	// FILE *outfile = fopen("tree.txt","w");
+	// ast_node* root = program(tokList, tokList->numTokens);
+	// // printf("ROOT HAS %d children\n", root->numChildren);
+	// print_ast_root_f(root, outfile);
 
-	// printf("%d\n", root->children[0]->type);1
-	// visit2(root, -1, -1, 'S');
+	// // printf("%d\n", root->children[0]->type);1
+	// // visit2(root, -1, -1, 'S');
 }

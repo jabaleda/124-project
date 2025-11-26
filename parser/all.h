@@ -69,8 +69,9 @@ typedef enum{
 	TOK_HOW_IZ_I,
 
 	//
-	TOK_IF_U_SAY_SO
+	TOK_IF_U_SAY_SO,
 
+    TOK_BREAK
 } TokenType;
 
 
@@ -205,6 +206,8 @@ typedef enum{
 	//
 	IF_U_SAY_SO,
 
+    BREAK,
+
 	// Non-terminals
 	PROG,
 	VAR_DEC,
@@ -307,6 +310,8 @@ char* string_ver[] = {
 	"HOW_IZ_I",
 
 	"IF_U_SAY_SO",
+
+    "BREAK",
 
 	"PROG",
 	"VAR_DEC",
@@ -428,7 +433,7 @@ LexemeList* lex(/*FILE* fp*/) {
     // // File reading
     // FILE *fileptr;
     // fileptr = fopen("test.lol", "r");
-    // // file contents
+    // // file 
     // char storage[100];
     // // ? fgets vs fread?
     // // fgets(storage, 100, fileptr);   // reads one line
@@ -619,8 +624,10 @@ LexemeList* lex(/*FILE* fp*/) {
             chars_read++;
             // get substr
             char substr[2] = "\n";
-            substr[2] = '\0';
+            substr[1] = '\0';
             printf("Newline lexeme: %s\n", substr);
+            Lexeme *newLex = createLexeme(substr, lines_read);
+            addLexemeToList(lexemeList, newLex);
             // increment lines read count for every newline encountered
             lines_read++;
             // add to lexeme list
@@ -822,7 +829,9 @@ TokenList* tokenize(LexemeList* list){
             newToken = createToken(TOK_TYPE, "YARN", list->lexemes[i]->line);
         } else if(strcmp(list->lexemes[i]->value, "TROOF") == 0){
             newToken = createToken(TOK_TYPE, "TROOF", list->lexemes[i]->line);
-        } else {
+        } else if(strcmp(list->lexemes[i]->value, "\n\0") == 0) {   // newline
+            newToken = createToken(TOK_BREAK, "\\n", list->lexemes[i]->line);
+        }else {
             // Check if keyword
             int type = isKeyword(list, &i);
             if(type != -1){ // if keyword matched
