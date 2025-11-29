@@ -5,8 +5,10 @@
 #include "all.h"
 
 
-#define curType (*cur)->type
-#define nextType (*(cur+1))->type
+#define curType		(*cur)->type
+#define nextType	(*(cur+1))->type
+#define ITVAL		symTable->entries[0]->value
+
 const int EXPR_KEYWORDS[] = {TOK_SUM_OF, TOK_DIFF_OF, TOK_PRODUKT_OF, TOK_QUOSHUNT_OF, TOK_MOD_OF, TOK_NOT, TOK_BOTH_OF, TOK_EITHER_OF, TOK_WON_OF, TOK_ALL_OF, TOK_ANY_OF, TOK_BOTH_SAEM, TOK_DIFFRINT, TOK_BIGGR_OF, TOK_SMALLR_OF, TOK_SMOOSH};
 int lastTokIdx;
 /* Pointer to elements in token array */
@@ -14,6 +16,8 @@ Token** cur;
 
 /* Total number of nodes in AST*/
 int numNodes = 0;
+
+SymbolTable* symTable;
 
 ast_node* createNode(int type){
 	ast_node* newNode = malloc(sizeof(ast_node));
@@ -68,14 +72,216 @@ void addChildNoIncrement(ast_node* parent, ast_node* child){
 	addTrace(parent, child);
 }
 
+/* Alert syntax error and terminate interpreter */
 void syntaxError(char *msg){
 	printf("Syntax error: %s	Found: %s (line: %d)\n", msg, (*cur)->lexeme, (*cur)->line);
 	exit(1);
 }
 
+/* Increment pointer up to the next non-newline (TOK_BREAK) token*/
+void seekNextLine(){
+	if(curType != TOK_BREAK){
+		syntaxError("Expected newline.");
+	}
+	while(curType == TOK_BREAK){
+		cur++;
+	}
+}
+
+
 /* Use for debugging only, traces parse sequence to identify current function, token, lexeme, and line*/
 void trace(char* msg, char* node){
 	printf("Trace: %s	In: %s\n		Current Token: %s	Lexeme: %s	Line: %d\n\n", msg, node, string_ver[curType], (*cur)->lexeme,(*cur)->line);
+}
+
+/* Prints out formatted symbol table */
+void print_table(SymbolTable* table){
+    printf("=============== SYMBOL TABLE ===============\n");
+    // Num     Identifier       SymbolType          VarType         Value
+    printf("%-3s | %-20s | %-10s | %-10s | %-30s\n", "No.", "Identifier", "SymbolType", "VarType", "Value");        
+    for(int i = 0; i < table->numEntries; i++){
+        if(table->entries[i]->symType == SYM_VAR){
+            switch(table->entries[i]->varType){
+                case TYPE_INT:
+                    printf("%-3d | %-20s | %-10s | %-10s | %-30d\n", i, table->entries[i]->id, symType_strings[table->entries[i]->symType], varType_strings[table->entries[i]->varType], table->entries[i]->value.intVal);        
+                    break;
+                case TYPE_FLOAT:
+                    printf("%-3d | %-20s | %-10s | %-10s | %-30f\n", i, table->entries[i]->id, symType_strings[table->entries[i]->symType], varType_strings[table->entries[i]->varType], table->entries[i]->value.floatVal);        
+                    break;
+                case TYPE_STRING:
+                    printf("%-3d | %-20s | %-10s | %-10s | %-30s\n", i, table->entries[i]->id, symType_strings[table->entries[i]->symType], varType_strings[table->entries[i]->varType], table->entries[i]->value.stringVal);        
+                    break;
+                case TYPE_BOOL:
+                    printf("%-3d | %-20s | %-10s | %-10s | %-30s\n", i, table->entries[i]->id, symType_strings[table->entries[i]->symType], varType_strings[table->entries[i]->varType], table->entries[i]->value.intVal == 1? "True" : "False");        
+                    break;
+                case TYPE_TYPE:
+                    printf("%-3d | %-20s | %-10s | %-10s | %-30s\n", i, table->entries[i]->id, symType_strings[table->entries[i]->symType], varType_strings[table->entries[i]->varType], table->entries[i]->value.stringVal);        
+                    break;
+            }
+        // } else if (table->entries[i]->symType == SYM_FUN){
+                    // printf("%-3d | %-20s | %-10s | %-10s | %-30s", i, table->entries[i]->id, symType_strings[table->entries[i]->symType], "N/A", "N/A");        
+        } else {
+                    printf("%-3d | %-20s | %-10s | %-10s | %-30s\n", i, table->entries[i]->id, symType_strings[table->entries[i]->symType], "N/A", "N/A");        
+
+        }         
+    }
+}
+
+SymbolTable* create_table(){
+    SymbolTable* newTable = malloc(sizeof(SymbolTable));
+    if(newTable == NULL){
+        printf("Create symbol table malloc error.\n");
+        exit(1);
+    }
+    newTable->numEntries = 0;
+    newTable->entries = NULL;
+    return newTable;
+}
+
+Entry* create_var_entry_int(char *id, int val){
+    Entry* newEntry = malloc(sizeof(Entry));
+    if(newEntry == NULL){
+        printf("Symbol table entry malloc error.\n");
+        exit(1);
+    }   newEntry->id = strdup(id);
+    newEntry->symType = SYM_VAR;
+    newEntry->varType = TYPE_INT;
+    newEntry->value.intVal = val;
+    return newEntry;
+}
+Entry* create_var_entry_float(char *id, float val){
+    Entry* newEntry = malloc(sizeof(Entry));
+    if(newEntry == NULL){
+        printf("Symbol table entry malloc error.\n");
+        exit(1);
+    }    newEntry->id = strdup(id);
+    newEntry->symType = SYM_VAR;
+    newEntry->varType = TYPE_FLOAT;
+    newEntry->value.floatVal = val;
+    return newEntry;
+}
+Entry* create_var_entry_string(char *id, char *val){
+    Entry* newEntry = malloc(sizeof(Entry));
+    if(newEntry == NULL){
+        printf("Symbol table entry malloc error.\n");
+        exit(1);
+    }   newEntry->id = strdup(id);
+    newEntry->symType = SYM_VAR;
+    newEntry->varType = TYPE_STRING;
+    newEntry->value.stringVal = val;
+    return newEntry;
+}
+
+Entry* create_var_entry_bool(char *id, int val){
+    Entry* newEntry = malloc(sizeof(Entry));
+    if(newEntry == NULL){
+        printf("Symbol table entry malloc error.\n");
+        exit(1);
+    }
+    newEntry->id = strdup(id);
+    newEntry->symType = SYM_VAR;
+    newEntry->varType = TYPE_BOOL;
+    newEntry->value.intVal = val;
+    return newEntry;
+}
+
+Entry* create_var_entry_type(char *id, char *val){
+    Entry* newEntry = malloc(sizeof(Entry));
+    if(newEntry == NULL){
+        printf("Symbol table entry malloc error.\n");
+        exit(1);
+    }    newEntry->id = strdup(id);
+    newEntry->symType = SYM_VAR;
+    newEntry->varType = TYPE_STRING;
+    newEntry->value.stringVal = val;
+    return newEntry;
+}
+
+Entry* create_var_entry_no_type(char *id){
+    Entry* newEntry = malloc(sizeof(Entry));
+    if(newEntry == NULL){
+        printf("Symbol table entry malloc error.\n");
+        exit(1);
+    }    newEntry->id = strdup(id);
+    newEntry->symType = SYM_VAR;
+    newEntry->varType = TYPE_NOOB;
+    return newEntry;
+}
+
+Entry* create_function_entry(char *id){
+    Entry* newEntry = malloc(sizeof(Entry));
+    if(newEntry == NULL){
+        printf("Symbol table entry malloc error.\n");
+        exit(1);
+    }
+    newEntry->id = strdup(id);
+    newEntry->symType = SYM_FUN;
+    return newEntry;
+}
+
+Entry* create_param_entry(char *id){
+    Entry* newEntry = malloc(sizeof(Entry));
+    if(newEntry == NULL){
+        printf("Symbol table entry malloc error.\n");
+        exit(1);
+    }
+    newEntry->id = strdup(id);
+    newEntry->symType = SYM_PARAM;
+    return newEntry;
+}
+
+void addSymTableEntry(SymbolTable* table, Entry* e){
+    Entry **temp = realloc(table->entries, sizeof(Entry*) * table->numEntries+1);
+    if(temp == NULL){
+        printf("Add symbol table entry realloc error.\n");
+        exit(1);
+    }
+    table->entries = temp;
+    table->entries[table->numEntries] = e;
+    table->numEntries++;
+}
+
+SymbolTable* initSymbolTable(){
+    SymbolTable* newTable = create_table();
+    Entry* itVar = create_var_entry_int("IT", 0);
+    addSymTableEntry(newTable, itVar);
+    return newTable;
+}
+
+int setVarEntryValInt(char* id, int val){
+	for(int i = 0; i < symTable->numEntries; i++){
+		if(strcmp(symTable->entries[i]->id, id) == 0){
+			symTable->entries[i]->value.intVal = val;
+		}
+	}
+}
+int setVarEntryValFloat(char* id, float val){
+	for(int i = 0; i < symTable->numEntries; i++){
+		if(strcmp(symTable->entries[i]->id, id) == 0){
+			symTable->entries[i]->value.floatVal = val;
+		}
+	}
+}
+int setVarEntryValString(char* id, char* val){
+	for(int i = 0; i < symTable->numEntries; i++){
+		if(strcmp(symTable->entries[i]->id, id) == 0){
+			symTable->entries[i]->value.stringVal = strdup(val);
+		}
+	}
+}
+int setVarEntryValBool(char* id, int val){
+	for(int i = 0; i < symTable->numEntries; i++){
+		if(strcmp(symTable->entries[i]->id, id) == 0){
+			symTable->entries[i]->value.intVal = val;
+		}
+	}
+}
+int setVarEntryValType(char* id, char* val){
+	for(int i = 0; i < symTable->numEntries; i++){
+		if(strcmp(symTable->entries[i]->id, id) == 0){
+			symTable->entries[i]->value.stringVal = strdup(val);
+		}
+	}
 }
 
 /*
@@ -83,18 +289,22 @@ void trace(char* msg, char* node){
 */
 ast_node* program(TokenList* tokenList, int numTokens){
 	ast_node* n;
+	while(curType == TOK_BREAK) cur++;		// ignore any trailing newlines
 	if(curType == TOK_HAI){
 		n = createNode(PROG);
 		// trace("Start", string_ver[n->type]);
 		addChild(n, createNode(HAI));
+		seekNextLine();
 		if(curType == TOK_WAZZUP){
 			addChild(n, createNode(WAZZUP));
+			seekNextLine();
 			if(curType == TOK_I_HAS_A){					// Found var dec statement
 				// trace("Found var_dec", string_ver[n->type]);
 				addChildNoIncrement(n, var_dec());
 				// trace("End of var_decs", string_ver[n->type]);
 					if(curType == TOK_BUHBYE){
 						addChild(n, createNode(BUHBYE));
+						seekNextLine();
 						// next token in list is not KTHXBYE, expect statement
 						if(curType == TOK_KTHXBYE){			
 							addChildNoIncrement(n, createNode(KTHXBYE));
@@ -109,6 +319,7 @@ ast_node* program(TokenList* tokenList, int numTokens){
 			} else if(curType == TOK_BUHBYE){		// No vars declared
 					// trace("No var dec found", string_ver[n->type]);
 					addChild(n, createNode(BUHBYE));
+					seekNextLine();
 				if(curType == TOK_KTHXBYE){			// End of program keyword immediately encountered
 													// Expect no further statements (all tokens consumed)
 					addChildNoIncrement(n, createNode(KTHXBYE));
@@ -125,30 +336,45 @@ ast_node* program(TokenList* tokenList, int numTokens){
 		syntaxError("Expected HAI");
 	}
 
-	if((*cur)->tok_id < lastTokIdx){	// Not all tokens consumed after KTHXBYE keyword encountered
-		syntaxError("Unexpected statement past end of program 'KTHXBYE'");
+	// seekNextLine();
+
+	if(curType != TOK_KTHXBYE){	// Not all tokens consumed after KTHXBYE keyword encountered
+		syntaxError("Error. Parsing incomplete.");
 	}
 	printf("Done parsing.\n");
 	return n;
 }
 
 ast_node* var_dec(){
-	ast_node* n = createNode(VAR_DEC);
+	ast_node* n = createNode(VAR_DEC), *c1, *c2;
 	do{
 		// trace("Found I HAS A", string_ver[n->type]);
 		addChild(n, createNode(I_HAS_A));
 		//  check for following identifier
 		if(curType == TOK_IDENT){
-			addChildNoIncrement(n, var_val());
+			c1 = var_val();
+			addChildNoIncrement(n, c1);
 			// trace("Returned from first ident in var_dec", string_ver[n->type]);
 			// check for initialization
 			if(curType == TOK_ITZ){		
 				addChild(n, createNode(ITZ));
-				addChildNoIncrement(n, var_val());
+				c2 = var_val();
+				addChildNoIncrement(n, c2);
+				switch(c2->children[0]->type){
+					case TOK_INTEGER:
+						addSymTableEntry(symTable, create_var_entry_int(c1->children[0]->id_name, (int) c2->children[0]->num_val));
+						// addSymTableEntry(symTable, create_var_entry_int(c1->children[0]->id_name, symTable->entries[0]->value.intVal));
+						break;
+					default:
+				}
+			} else {
+			
 			}
 		} else {
 			syntaxError("Expected identifier after I HAS A");
 		}
+
+		seekNextLine();
 	} while(curType == TOK_I_HAS_A); // check for further variable declarations
 	trace("Returning var_dec", string_ver[n->type]);
 	return n;
@@ -166,26 +392,31 @@ ast_node* var_val(){
 		case TOK_INTEGER:
 			s = createNode(INTEGER);
 			s->num_val = atoi((*cur)->lexeme);
+			setVarEntryValInt("IT", s->num_val);
 			addChild(n, s);
 			break;
 		case TOK_FLOAT:
 			s = createNode(FLOAT);
 			s->num_val = atof((*cur)->lexeme);
+			setVarEntryValFloat("IT", s->num_val);
 			addChild(n, s);
 			break;
 		case TOK_STRING:
 			s = createNode(STRING);
 			s->string_val = (*cur)->lexeme;
+			setVarEntryValString("IT", s->string_val);
 			addChild(n, s);
 			break;
 		case TOK_BOOLEAN:
 			s = createNode(BOOLEAN);
 			s->string_val = (*cur)->lexeme;
+			setVarEntryValInt("IT", s->num_val);
 			addChild(n, s);
 			break;
 		case TOK_TYPE:
 			s = createNode(TYPE);
 			s->string_val = (*cur)->lexeme;
+			setVarEntryValString("IT", s->string_val);
 			addChild(n, s);
 			break;
 		default:
@@ -274,6 +505,8 @@ ast_node* single_stmt(){
 		// trace("Start/End keyword of compound stmt block found", string_ver[n->type]);
 		return n;
 	}
+
+	seekNextLine();
 
 	if(curType != TOK_KTHXBYE){	// end of program not encountered, check for <stmt> ::= <single_stmt> <stmt>
 		// trace("KTHXBYE not found, expecting more statements", string_ver[n->type]);
@@ -671,6 +904,7 @@ ast_node* compound_stmt(){
 		default:
 	}
 
+	seekNextLine();
 	if(curType != TOK_KTHXBYE){	// end of program not encountered, check for <stmt> ::= <single_stmt> <stmt>
 		addChild(n, stmt());
 	}
@@ -937,15 +1171,16 @@ void listTokens(TokenList* list){
 int main(){
 	LexemeList* lexList = lex();
 	TokenList* tokList = tokenize(lexList);
-	// lastTokIdx = tokList->numTokens-1;
-	// cur = tokList->tokens;
-	// listTokens(tokList);
+	lastTokIdx = tokList->numTokens-1;
+	cur = tokList->tokens;
+	symTable = initSymbolTable();
+	listTokens(tokList);
 
-	// cur = tokList->tokens;
-	// FILE *outfile = fopen("tree.txt","w");
-	// ast_node* root = program(tokList, tokList->numTokens);
-	// // printf("ROOT HAS %d children\n", root->numChildren);
-	// print_ast_root_f(root, outfile);
+	cur = tokList->tokens;
+	FILE *outfile = fopen("tree.txt","w");
+	ast_node* root = program(tokList, tokList->numTokens);
+	// printf("ROOT HAS %d children\n", root->numChildren);
+	print_ast_root_f(root, outfile);
 
 	// // printf("%d\n", root->children[0]->type);1
 	// // visit2(root, -1, -1, 'S');

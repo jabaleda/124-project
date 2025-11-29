@@ -630,8 +630,6 @@ LexemeList* lex(/*FILE* fp*/) {
             printf("Print concat lexeme: %s\n", substr);
             Lexeme *newLex = createLexeme(substr, lines_read);
             addLexemeToList(lexemeList, newLex);
-            // increment lines read count for every newline encountered
-            lines_read++;
             // add to lexeme list
             current_char = lexeme_end;
             // incremement iter + chars read in this loop turn
@@ -999,3 +997,82 @@ void print_ast_root_f(const ast_node *root, FILE *out) {
         print_ast_f(root->children[i], "", i == root->numChildren - 1, out);
     }
 }
+
+
+/*Semantic stuff*/
+
+typedef enum{
+    SYM_VAR,
+    SYM_FUN,
+    SYM_PARAM
+}  SymbolType;
+
+char* symType_strings[] = {
+    "Variable",
+    "Function",
+    "Parameter"
+};
+
+/* Data type of variable identifier*/
+typedef enum{
+    TYPE_INT,
+    TYPE_FLOAT,
+    TYPE_STRING,
+    TYPE_BOOL,
+    TYPE_TYPE,
+    TYPE_NOOB   // for uninitialized
+} VarType;
+
+char* varType_strings[] = {
+    "Integer",
+    "Float",
+    "String",
+    "Boolean",
+    "Type",
+    "Noob"
+};
+
+typedef enum{
+    GLOBAL_SCOPE,
+    LOCAL_SCOPE
+} SymbolScope;
+
+typedef struct Entry{
+    
+    // int line;
+    char* id;                   // string identifier/name
+    SymbolType symType;            // is the symbol a function or var id
+    VarType varType;
+    // SymbolScope scope;
+    union {                     // value of var symbols
+        int intVal;
+        float floatVal;
+        char* stringVal;
+    } value;
+    // struct table_entry *prev;
+    // struct table_entry *next;
+
+} Entry;
+
+typedef struct SymbolTable{
+    int numEntries;
+    Entry** entries;
+} SymbolTable;
+
+void print_table(SymbolTable* table);
+Entry* create_var_entry_int(char *id, int val);
+Entry* create_var_entry_float(char *id, float val);
+Entry* create_var_entry_string(char *id, char *val);
+Entry* create_var_entry_bool(char *id, int val);
+Entry* create_var_entry_type(char *id, char *val);
+Entry* create_var_entry_no_type(char *id);
+Entry* create_function_entry(char *id);
+Entry* create_param_entry(char *id);
+int setVarEntryValInt(char* id, int val);
+int setVarEntryValFloat(char* id, float val);
+int setVarEntryValString(char* id, char* val);
+int setVarEntryValBool(char* id, int val);
+int setVarEntryValType(char* id, char* val);
+void addSymTableEntry(SymbolTable* table, Entry* e);
+SymbolTable* initSymbolTable();
+
