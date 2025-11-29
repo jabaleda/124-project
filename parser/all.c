@@ -231,7 +231,7 @@ Entry* create_param_entry(char *id){
 }
 
 void addSymTableEntry(SymbolTable* table, Entry* e){
-    Entry **temp = realloc(table->entries, sizeof(Entry*) * table->numEntries+1);
+    Entry **temp = realloc(table->entries, sizeof(Entry*) * (table->numEntries+1));
     if(temp == NULL){
         printf("Add symbol table entry realloc error.\n");
         exit(1);
@@ -1174,7 +1174,7 @@ int main(){
 	lastTokIdx = tokList->numTokens-1;
 	cur = tokList->tokens;
 	symTable = initSymbolTable();
-	listTokens(tokList);
+	// listTokens(tokList);
 
 	cur = tokList->tokens;
 	FILE *outfile = fopen("tree.txt","w");

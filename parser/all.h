@@ -456,8 +456,8 @@ LexemeList* lex(/*FILE* fp*/) {
     int size = 0;
 
     // ? vary filename as needed. hardcoded file naming munaaa d2
-    // char *cwd = "C:/Users/Julianne/Documents/25-26/CMSC-124/project/test.lol";
-    char *cwd = "sample.lol";
+    char *cwd = "C:/Users/Julianne/Documents/25-26/CMSC-124/project/repo-files/lexer/sample.lol";
+    // char *cwd = "sample.lol";
 
     printf("File path: %s\n", cwd);
 
@@ -492,7 +492,7 @@ LexemeList* lex(/*FILE* fp*/) {
     // * ----- Lexeme Buildeing -----
     int iter = 0, lines_read = 1;
     int chars_read;
-    char *start = lines_read_buffer;
+    char *start_of_line = lines_read_buffer;
     char *current_char = lines_read_buffer;
     char *lexeme_end = lines_read_buffer;
 
@@ -537,10 +537,73 @@ LexemeList* lex(/*FILE* fp*/) {
                     lexeme_end++;
                     chars_read++;
                 }
-                // also consume \n
-                lexeme_end++;
-                chars_read++;
-                lines_read++;   // increment since \n is consumed
+                // check if current char is same as start of line. T -> consume \n; else -> do not consume \n, inline comment
+                if(current_char == start_of_line) {
+                    // DO NOT CONSUME \n for inline comments
+                    lexeme_end++;
+                    chars_read++;
+                    lines_read++;   // increment since \n is consumed, to keep line numbers consistent
+                    // move line start to new line
+                    start_of_line = lexeme_end;
+                }
+                
+            } else if(strcmp(substr, "OBTW") == 0) {
+                // toggle multiline comment flag -> 1, keep reading but not recording until flag is reset by T
+                // make sure obtw is found at start of line, else throw error and exits
+                if(current_char != start_of_line){
+                    printf("Error: Comment at line %d is not allowed.", lines_read);
+                    exit(-1);
+                } else {
+                    int temp_counter = 0;
+                    while(1){
+                        temp_counter = 0;
+                        while(*lexeme_end != 'T' && *lexeme_end != '\n' && *lexeme_end != '\0') {
+                            lexeme_end++;
+                            chars_read++;
+                        }
+                        if(*lexeme_end == '\n'){
+                            lines_read++;
+                            lexeme_end++;
+                            chars_read++;
+                            current_char = lexeme_end;
+                            // move line start to new line
+                            start_of_line = lexeme_end;
+                        }
+
+                        char *temp = lexeme_end;
+                        // check if TLDR appears
+                        while(*temp != ' ' && *temp != '\n' && *temp != '\0') {
+                            temp++;
+                            temp_counter++;
+                        }
+                        if(temp_counter == 4){
+                            char temp_str[temp_counter+1];
+                            strncpy(temp_str, lexeme_end, temp_counter);
+                            temp_str[temp_counter] = '\0';
+                            
+                            if(strcmp(temp_str, "TLDR") == 0){
+                                lexeme_end = temp;
+                                if(*lexeme_end == '\n'){
+                                    lexeme_end++;
+                                    lines_read++;
+                                    chars_read+=temp_counter;
+                                    current_char = lexeme_end;
+                                    // move line start to new line
+                                    start_of_line = lexeme_end;
+                                    break;
+                                } else {
+                                    printf("Error: Comment at line %d is not allowed.", lines_read);
+                                    exit(-1);
+                                }
+                                
+                            }
+                        }
+                    }
+                }
+                
+                
+                
+
             } else {
                 // // else add to lexeme list
                 printf("Alphabetic/Digit/AlphaNum lexeme: %s\n", substr);
@@ -653,6 +716,8 @@ LexemeList* lex(/*FILE* fp*/) {
             lines_read++;
             // add to lexeme list
             current_char = lexeme_end;
+            // move line start to new line
+            start_of_line = lexeme_end;
             // incremement iter + chars read in this loop turn
             iter += chars_read;
             // printf("Chars read this turn: %d\n", chars_read);
@@ -710,7 +775,7 @@ TokenList* createTokenList(){
 
 int addToken(TokenList* list, Token* newToken){
     Token **temp = NULL;
-    temp = realloc(list->tokens, sizeof(Token*) * list->numTokens + 1);
+    temp = realloc(list->tokens, sizeof(Token*) * (list->numTokens + 1));
     if(temp != NULL){
         list->tokens = temp;
         list->tokens[list->numTokens] = newToken;
@@ -890,7 +955,7 @@ typedef struct ast_node{
 } ast_node;
 
 // states forward dec
-ast_node* program();
+ast_node* program(TokenList* tokenList, int numTokens);
 ast_node* stmt();
 ast_node* var_val();
 ast_node* var_dec();
@@ -1075,4 +1140,3 @@ int setVarEntryValBool(char* id, int val);
 int setVarEntryValType(char* id, char* val);
 void addSymTableEntry(SymbolTable* table, Entry* e);
 SymbolTable* initSymbolTable();
-
