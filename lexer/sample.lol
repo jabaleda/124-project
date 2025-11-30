@@ -8,8 +8,8 @@ HAI
     BUHBYE
 
     BTW print literals and variables
-    VISIBLE "declarations"
     VISIBLE 1
+    VISIBLE "declarations"
     VISIBLE 2.0
 
     VISIBLE var1
@@ -20,9 +20,9 @@ HAI
     BTW VISIBLE SUM OF DIFF OF var1 AN var2 AN var1
 
     VISIBLE SUM OF 68 AN 1
-    VISIBLE SUM OF 68.0 AN 1
-    VISIBLE SUM OF 68 AN 1.0
-    VISIBLE SUM OF 68.0 AN 1.0
+    VISIBLE DIFF OF 68.0 AN 1
+    VISIBLE PRODUKT OF 68 AN 1.0
+    VISIBLE QUOSHUNT OF 68.0 AN 2.0
 
     BTW print expressions
     BTW VISIBLE SUM OF PRODUKT OF 3 AN 5 AN BIGGR OF DIFF OF 17 AN 2 AN 5

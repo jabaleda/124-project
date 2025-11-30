@@ -1145,11 +1145,14 @@ union Data {
 // 0 - arith, comparison
 // 1 - concat -> string
 // 2 - boolean
+// Data type used to pass around result of evaluated expressions
 typedef struct {
     int expr_source_type;
     int float_flag;
     union Data eval_data;
 } EvalData;
+
+EvalData *createEvalData();
 
 // * ----------
 

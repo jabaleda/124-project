@@ -1178,6 +1178,13 @@ void listTokens(TokenList* list){
 // * Julianne -----------------------------------------------------------
 // --- helpers 
 
+EvalData *createEvalData(){
+	EvalData *new = malloc(sizeof(EvalData));
+	new->expr_source_type = 0;
+	new->float_flag = 0;
+	return new;
+}
+
 // symbol table var_ident ref searcher
 int find_ident_num(SymbolTable *table, char *var_ident) {
 	for(int i=0; i<table->numEntries; i++){
@@ -1206,19 +1213,20 @@ If at least one operand is a NUMBAR, the result of the operation is a NUMBAR.
 
 */
 // SUM OF | DIFF OF | PRODUKT OF | QUOSHUNT OF
-int arith_evaluator(ast_node *node) {
+void *arith_evaluator(ast_node *node, EvalData *answer) {
 	// check first child for operator
 	ast_node *first_child = node->children[0];
 	// operands
 	ast_node *left_operand = node->children[1];
 	ast_node *right_operand = node->children[3];
 	
-	int operator = first_child->type;
+	TokenType operator = first_child->type;
 	int left_float_flag = 0;
 	int right_float_flag = 0;
 
 	int left_int, right_int, result_int;
 	float left_fl, right_fl, result_fl;
+
 	
 	// 0 0 -> NUMBR
 	// 0 1 || 1 0 -> NUMBAR
@@ -1269,37 +1277,72 @@ int arith_evaluator(ast_node *node) {
 		case SUM_OF:
 			// check if NUMBR or NUMBAR
 			if(left_float_flag || right_float_flag == 1){
-				// eval as NUMBAR
-				result_fl = left_fl + right_fl;
-				return result_fl;
+				if(left_float_flag && right_float_flag == 1){
+					result_fl = left_fl + right_fl;
+				} else {
+					// eval as NUMBAR
+					switch(left_float_flag){
+						case 0:
+							result_fl = (float)left_int + right_fl;
+							break;
+						case 1:
+							result_fl = left_fl + (float)right_int;
+							break;
+					}
+				}
+				answer->eval_data.flt_Result = result_fl;
 			} else {
 				// resulted to 0, eval as NUMBR
 				result_int = left_int + right_int;
-				return result_int;
+				answer->eval_data.int_Result = result_int;
 			}
 			break;
 		case DIFF_OF:
 			// check if NUMBR or NUMBAR
 			if(left_float_flag || right_float_flag == 1){
 				// eval as NUMBAR
-				result_fl = left_fl - right_fl;
-				return result_fl;
+				if(left_float_flag && right_float_flag == 1){
+					result_fl = left_fl - right_fl;
+				} else {
+					// eval as NUMBAR
+					switch(left_float_flag){
+						case 0:
+							result_fl = (float)left_int - right_fl;
+							break;
+						case 1:
+							result_fl = left_fl - (float)right_int;
+							break;
+					}
+				}
+				answer->eval_data.flt_Result = result_fl;
 			} else {
 				// resulted to 0, eval as NUMBR
 				result_int = left_int - right_int;
-				return result_int;
+				answer->eval_data.int_Result = result_int;
 			} 
 			break;
 		case PRODUKT_OF:
 			// check if NUMBR or NUMBAR
 			if(left_float_flag || right_float_flag == 1){
 				// eval as NUMBAR
-				result_fl = left_fl * right_fl;
-				return result_fl;
+				if(left_float_flag && right_float_flag == 1){
+					result_fl = left_fl * right_fl;
+				} else {
+					// eval as NUMBAR
+					switch(left_float_flag){
+						case 0:
+							result_fl = (float)left_int * right_fl;
+							break;
+						case 1:
+							result_fl = left_fl * (float)right_int;
+							break;
+					}
+				}
+				answer->eval_data.flt_Result = result_fl;
 			} else {
 				// resulted to 0, eval as NUMBR
 				result_int = left_int * right_int;
-				return result_int;
+				answer->eval_data.int_Result = result_int;
 			}
 			break;
 		case QUOSHUNT_OF:
@@ -1308,12 +1351,25 @@ int arith_evaluator(ast_node *node) {
 				// check if NUMBR or NUMBAR
 				if(left_float_flag || right_float_flag == 1){
 					// eval as NUMBAR
-					result_fl = left_fl / right_fl;
-					return result_fl;
+					if(left_float_flag && right_float_flag == 1){
+						result_fl = left_fl / right_fl;
+					} else {
+						// eval as NUMBAR
+						switch(left_float_flag){
+							case 0:
+								result_fl = (float)left_int / right_fl;
+								break;
+							case 1:
+								result_fl = left_fl + (float)right_int;
+								break;
+						}
+					}
+					result_fl = (float)left_fl / (float)right_fl;
+					answer->eval_data.flt_Result = result_fl;
 				} else {
 					// resulted to 0, eval as NUMBR
 					result_int = left_int + right_int;
-					return result_int;
+					answer->eval_data.int_Result = result_int;
 				}
 			} else {
 				printf("!!! Error: Dividing by 0!");
@@ -1322,6 +1378,10 @@ int arith_evaluator(ast_node *node) {
 		default: 
 			printf("!!! Error. Unknown arithmetic operation!\n");
 	}
+
+	// pack evaluation, to return to print
+	answer->expr_source_type = 1;
+	answer->float_flag = left_float_flag || right_float_flag;
 }
 
 
@@ -1338,7 +1398,8 @@ int expr_type_check(ast_node *node) {
 }
 
 
-int subtree_walk(ast_node *node) {
+EvalData *subtree_walk(ast_node *node) {
+	printf("%s \n", string_ver[node->type]);
 	if(node->type == VAR_VAL) {
 		ast_node *child = node->children[0];
 		if(child->type == EXPR) {
@@ -1365,12 +1426,15 @@ int subtree_walk(ast_node *node) {
 		}
 	} else if(node->type == EXPR) {
 		ast_node *child = node->children[0];
+		printf("%s \n", string_ver[child->type]);
 		int expr_type = expr_type_check(child);
 		switch(expr_type){
-			case ARITHMETIC: 
+			case 1: 
 				// arithmetic evaluator
-				arith_evaluator(child);
-				break;
+				EvalData *evaled = createEvalData();
+				arith_evaluator(child, evaled);
+				return evaled;
+				// break;
 
 			// case BOOLEAN:
 
@@ -1415,6 +1479,7 @@ void var_dec_tree_walk(ast_node* node){
 
 // called from root node, preorder traversal
 void interpret_walk(SymbolTable *table, ast_node *node) {
+	printf("%s \n", string_ver[node->type]);
 	// check if print statement encountered, since output is (required) and evaluation may be performed
 	if(node->type == PRINT && node->children[0]->type == PRINT) {
 		ast_node *child = node->children[1];
@@ -1453,11 +1518,25 @@ void interpret_walk(SymbolTable *table, ast_node *node) {
 					default:
 						printf("%s\n", table->entries[ident_num]->value.stringVal);
 				}
+				return;
 
 				// symTable->entries
 				// print return val
 			case EXPR:
+				// TODO: Make a branch w/ expr case outside of this print-if-branch to evaluate expressions not in a print statement
 				// call expr evaluator
+				EvalData *result = subtree_walk(print_op);		// TODO: might also need symbol table here to evaluate with var_idents
+
+				switch(result->expr_source_type){
+					case 1:
+						// from arithmetic
+						if(result->float_flag == 1){
+							printf("%f\n", result->eval_data.flt_Result);
+						} else if(result->float_flag == 0) {
+							printf("%d\n", result->eval_data.int_Result);
+						} // else 
+						
+				}
 				// print return val
 				return;
 		}
@@ -1470,8 +1549,6 @@ void interpret_walk(SymbolTable *table, ast_node *node) {
 		interpret_walk(table, node->children[i]);
 	}
 }
-
-
 
 // * Julianne -----------------------------------------------------------
 
@@ -1512,10 +1589,10 @@ int main(){
 	print_table(symTable);
 
 	printf("%d\n", root->children[0]->type);
-	visit2(root, -1, -1, 'S');
+	// visit2(root, -1, -1, 'S');
 
 	// * Julianne
-	var_dec_tree_walk(root);
+	// var_dec_tree_walk(root);
 	printf("---------- INTERPRETING... ----------\n");
 	interpret_walk(symTable, root);
 	// Julianne
