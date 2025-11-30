@@ -593,10 +593,12 @@ ast_node* expr(){
 		printf("Next token: %s\n", string_ver[nextType]);
 	}
 
+	// string concatenation
 	if(curType == TOK_SMOOSH){
 		addChildNoIncrement(n, concatenation());
 	}
 
+	// arithmetic expr
 	if(  curType == TOK_SUM_OF 
 			|| curType == TOK_DIFF_OF 
 			|| curType == TOK_PRODUKT_OF 
@@ -606,6 +608,7 @@ ast_node* expr(){
 		addChildNoIncrement(n, arithmetic());
 	}
 
+	// bool
 	if(curType == TOK_NOT 
 			|| curType == TOK_BOTH_OF 
 			|| curType == TOK_EITHER_OF
@@ -619,6 +622,7 @@ ast_node* expr(){
 	if(curType == TOK_BOTH_SAEM || curType == TOK_DIFFRINT){
 		addChildNoIncrement(n, comparison());
 	}
+
 	if(curType == TOK_MAEK) {
 		addChildNoIncrement(n, typecasting());
 	}
@@ -629,11 +633,13 @@ ast_node* expr(){
 			addChildNoIncrement(n, typecasting());
 		}
 	}
+
 	if((*cur)->tok_id < lastTokIdx-1){
 		if(curType == TOK_IDENT && nextType == TOK_R && (*(cur+2))->type == TOK_MAEK){
 			addChildNoIncrement(n, typecasting());
 		}
 	}
+
 	if(curType == TOK_BIGGR_OF || curType == TOK_SMALLR_OF){
 		addChildNoIncrement(n, relational());
 	} else {
@@ -1118,22 +1124,22 @@ ast_node* branches_block(){
 
 
 // preorder traversal
-void visit(ast_node* node){
-	printf("%s ", string_ver[node->type]);
-	for(int i = 0; i < node->numChildren; i++){
-		visit(node->children[i]);
-	}
-}
+// void visit(ast_node* node){
+// 	printf("%s ", string_ver[node->type]);
+// 	for(int i = 0; i < node->numChildren; i++){
+// 		visit(node->children[i]);
+// 	}
+// }
 
 void visit2(ast_node* node, Symbol pType, int pId, int pos){
 	if(pos == 'F'){ // first child
 		printf("(Children of %d: %s[%d] ", pId, string_ver[node->type], node->node_id);
 	} else if(pos == 'L'){ // last child
 		printf("%s[%d])\n", string_ver[node->type], node->node_id);
-	} else if(pos == 'S') { // only child
-		printf("(Child of %d: %s[%d] )\n", pId, string_ver[node->type], node->node_id);
 	} else if(pType == -1){  // node being visited is root
 		printf("ROOT NODE: PROG[%d]\n", node->node_id);
+	} else if(pos == 'S') { // only child
+		printf("(Child of %d: %s[%d] )\n", pId, string_ver[node->type], node->node_id);
 	} else {
 		printf(" %s[%d] ", string_ver[node->type], node->node_id);
 	}
@@ -1168,8 +1174,329 @@ void listTokens(TokenList* list){
 	}
 }
 
+
+// * Julianne -----------------------------------------------------------
+// --- helpers 
+
+// symbol table var_ident ref searcher
+int find_ident_num(SymbolTable *table, char *var_ident) {
+	for(int i=0; i<table->numEntries; i++){
+		if(strcmp(table->entries[i]->id, var_ident) == 0){
+			return i;
+		}
+	}
+	return -1;
+}
+// ---
+
+// Interpreting Business
+// Walk the tree start
+// 	on var_dec: ITZ, evaluate and check var_val subtree until literal OR expr is encountered, then enter to symbol table.
+//  on expr: 
+// 		check expression type: PRINT, ARITH, etc.
+//			obtain operands and evaluate them first if operand is another expr
+//			perform operation
+// 			return result
+
+// 	until statement or expr or ... is encountered
+
+/*
+If both operands evaluate to a NUMBR, the result of the operation is a NUMBR.
+If at least one operand is a NUMBAR, the result of the operation is a NUMBAR.
+
+*/
+// SUM OF | DIFF OF | PRODUKT OF | QUOSHUNT OF
+int arith_evaluator(ast_node *node) {
+	// check first child for operator
+	ast_node *first_child = node->children[0];
+	// operands
+	ast_node *left_operand = node->children[1];
+	ast_node *right_operand = node->children[3];
+	
+	int operator = first_child->type;
+	int left_float_flag = 0;
+	int right_float_flag = 0;
+
+	int left_int, right_int, result_int;
+	float left_fl, right_fl, result_fl;
+	
+	// 0 0 -> NUMBR
+	// 0 1 || 1 0 -> NUMBAR
+	// 11 -> NUMBAR
+
+	if(left_operand->type == VAR_VAL) {
+		ast_node *lo_val = left_operand->children[0];
+	
+		int lo_type = lo_val->type;
+		switch(lo_type){
+			case INTEGER:
+				left_int = lo_val->num_val;
+				break;
+			case FLOAT: 
+				left_fl = lo_val->num_val;
+				left_float_flag = 1;
+				break;
+			// case IDENT: 
+			// 	// cross-check with symbol table
+			// case EXPR:
+				// call expr evaluator
+		}
+		// evaluate and return here
+	}
+	if(right_operand->type == VAR_VAL) {
+		ast_node *ro_val = right_operand->children[0];
+	
+		int ro_type = ro_val->type;
+		switch(ro_type){
+			case INTEGER:
+				right_int = ro_val->num_val;
+				break;
+			case FLOAT: 
+				right_fl = ro_val->num_val;
+				right_float_flag = 1;
+				break;
+
+			// case IDENT: 
+			// 	// cross-check with symbol table
+			// case EXPR:
+				// call expr evaluator
+		}
+		// evaluate and return here
+	}
+
+	// perform operation
+	switch(operator) {
+		case SUM_OF:
+			// check if NUMBR or NUMBAR
+			if(left_float_flag || right_float_flag == 1){
+				// eval as NUMBAR
+				result_fl = left_fl + right_fl;
+				return result_fl;
+			} else {
+				// resulted to 0, eval as NUMBR
+				result_int = left_int + right_int;
+				return result_int;
+			}
+			break;
+		case DIFF_OF:
+			// check if NUMBR or NUMBAR
+			if(left_float_flag || right_float_flag == 1){
+				// eval as NUMBAR
+				result_fl = left_fl - right_fl;
+				return result_fl;
+			} else {
+				// resulted to 0, eval as NUMBR
+				result_int = left_int - right_int;
+				return result_int;
+			} 
+			break;
+		case PRODUKT_OF:
+			// check if NUMBR or NUMBAR
+			if(left_float_flag || right_float_flag == 1){
+				// eval as NUMBAR
+				result_fl = left_fl * right_fl;
+				return result_fl;
+			} else {
+				// resulted to 0, eval as NUMBR
+				result_int = left_int * right_int;
+				return result_int;
+			}
+			break;
+		case QUOSHUNT_OF:
+			
+			if(right_fl != 0) {
+				// check if NUMBR or NUMBAR
+				if(left_float_flag || right_float_flag == 1){
+					// eval as NUMBAR
+					result_fl = left_fl / right_fl;
+					return result_fl;
+				} else {
+					// resulted to 0, eval as NUMBR
+					result_int = left_int + right_int;
+					return result_int;
+				}
+			} else {
+				printf("!!! Error: Dividing by 0!");
+			}
+			break;
+		default: 
+			printf("!!! Error. Unknown arithmetic operation!\n");
+	}
+}
+
+
+int expr_type_check(ast_node *node) {
+	int type = node->type;
+	switch(type){
+		case ARITHMETIC: return 1;
+		case BOOLEAN: return 2;
+		case COMPARISON: return 3;
+		case CONCATENATION: return 4;
+		case TYPECASTING: return 5;
+		default: return 0;
+	}
+}
+
+
+int subtree_walk(ast_node *node) {
+	if(node->type == VAR_VAL) {
+		ast_node *child = node->children[0];
+		if(child->type == EXPR) {
+			ast_node *grandchild = child->children[0];
+			int expr_type = expr_type_check(grandchild);
+			switch(expr_type){
+				case ARITHMETIC: 
+					// arithmetic evaluator
+					break;
+				// case BOOLEAN:
+
+				// case COMPARISON: 
+
+				// case CONCATENATION: 
+
+				// case TYPECASTING: 
+
+				default:
+					printf("Error, unknown expression!");
+			}
+
+		} else {
+			return 0;
+		}
+	} else if(node->type == EXPR) {
+		ast_node *child = node->children[0];
+		int expr_type = expr_type_check(child);
+		switch(expr_type){
+			case ARITHMETIC: 
+				// arithmetic evaluator
+				arith_evaluator(child);
+				break;
+
+			// case BOOLEAN:
+
+			// case COMPARISON: 
+
+			// case CONCATENATION: 
+
+			// case TYPECASTING: 
+
+			default:
+				printf("Error, unknown expression!");
+		}
+	}
+}
+
+
+
+
+
+// taken from pre-order traversal
+void var_dec_tree_walk(ast_node* node){
+	printf("%s \n", string_ver[node->type]);
+
+	if(node->type == ITZ) {
+		printf(" --- ITZ found! ---\n");
+		// int dec_type = subtree_walk(node);
+		// // // UNNEEDED: automaticaly entered to symtable // //check literal type of var_val child, call lit. type returner
+		// // // if child is expr
+		// switch(dec_type){
+
+		// }
+			// call expr evaluator and get expr type
+			// switch case expr type
+			// call respective evaluators
+
+	}
+
+	for(int i = 0; i < node->numChildren; i++){
+		var_dec_tree_walk(node->children[i]);
+	}
+}
+
+// called from root node, preorder traversal
+void interpret_walk(SymbolTable *table, ast_node *node) {
+	// check if print statement encountered, since output is (required) and evaluation may be performed
+	if(node->type == PRINT && node->children[0]->type == PRINT) {
+		ast_node *child = node->children[1];
+		ast_node *print_op = child->children[0];
+		int print_op_type = print_op->type;			// print operand value type
+		switch(print_op_type) {
+			case STRING:
+				// print string to terminal
+				// TODO: Remove quotations in printing
+				printf("%s\n", print_op->string_val);
+				return;		// to go to next child of PRINT's parent (PRINT's sibling)
+			case INTEGER:
+				printf("%d\n", (int)print_op->num_val);
+				return;
+			case FLOAT:
+				printf("%f\n", print_op->num_val);
+				return;
+			// case BOOLEAN:
+				// print literal to terminal
+				// return
+			case IDENT:
+				// check with symbol table
+				int ident_num = find_ident_num(table, print_op->id_name);
+				// check type before print
+				VarType val_type = table->entries[ident_num]->varType;
+				switch(val_type) {
+					case TYPE_INT:
+						printf("%d\n", table->entries[ident_num]->value.intVal);
+						break;
+					case TYPE_FLOAT:
+						printf("%f\n", table->entries[ident_num]->value.floatVal);
+						break;
+					// case TYPE_BOOL:
+					
+					// default to string to output
+					default:
+						printf("%s\n", table->entries[ident_num]->value.stringVal);
+				}
+
+				// symTable->entries
+				// print return val
+			case EXPR:
+				// call expr evaluator
+				// print return val
+				return;
+		}
+	} 
+	// else if () {
+
+
+	// }
+	for(int i = 0; i < node->numChildren; i++){
+		interpret_walk(table, node->children[i]);
+	}
+}
+
+
+
+// * Julianne -----------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 int main(){
 	LexemeList* lexList = lex();
+	printf("lexing done...");
 	TokenList* tokList = tokenize(lexList);
 	lastTokIdx = tokList->numTokens-1;
 	cur = tokList->tokens;
@@ -1179,9 +1506,17 @@ int main(){
 	cur = tokList->tokens;
 	FILE *outfile = fopen("tree.txt","w");
 	ast_node* root = program(tokList, tokList->numTokens);
-	// printf("ROOT HAS %d children\n", root->numChildren);
+	printf("ROOT HAS %d children\n", root->numChildren);
 	print_ast_root_f(root, outfile);
 
-	// // printf("%d\n", root->children[0]->type);1
-	// // visit2(root, -1, -1, 'S');
+	print_table(symTable);
+
+	printf("%d\n", root->children[0]->type);
+	visit2(root, -1, -1, 'S');
+
+	// * Julianne
+	var_dec_tree_walk(root);
+	printf("---------- INTERPRETING... ----------\n");
+	interpret_walk(symTable, root);
+	// Julianne
 }

@@ -492,6 +492,7 @@ LexemeList* lex(/*FILE* fp*/) {
     // * ----- Lexeme Buildeing -----
     int iter = 0, lines_read = 1;
     int chars_read;
+    char *substrword;
     char *start_of_line = lines_read_buffer;
     char *current_char = lines_read_buffer;
     char *lexeme_end = lines_read_buffer;
@@ -531,6 +532,7 @@ LexemeList* lex(/*FILE* fp*/) {
             strncpy(substr, current_char, chars_read);
             substr[chars_read] = '\0'; // null-terminate the substring
 
+            substrword = substr;
             // check if keyword for comment -> move ptr lexeme_end to line end, increment chars read
             if(strcmp(substr, "BTW") == 0) {
                 while(*lexeme_end != '\n' && *lexeme_end != '\0') {
@@ -636,6 +638,7 @@ LexemeList* lex(/*FILE* fp*/) {
                 char substr[chars_read+1];
                 strncpy(substr, current_char, chars_read);
                 substr[chars_read] = '\0'; // null-terminate the substring
+                
                 printf("Signed digit lexeme: %s\n", substr);
                 // add to lexeme list
                 // create lexeme and add to list
@@ -706,11 +709,17 @@ LexemeList* lex(/*FILE* fp*/) {
             // newline character
             lexeme_end++;
             chars_read++;
+            // ! TODO: check prev. substr if KTHNXBYE
+            if(strcmp(substrword, "KTHXBYE") == 0) {
+                // set iter to len to terminate loop after this turn
+                iter = len;
+            }
+
             // get substr
-            char substr[2] = "\n";
-            substr[1] = '\0';
-            printf("Newline lexeme: %s\n", substr);
-            Lexeme *newLex = createLexeme(substr, lines_read);
+            char substr1[2] = "\n";
+            substr1[1] = '\0';
+            printf("Newline lexeme: %s\n", substr1);
+            Lexeme *newLex = createLexeme(substr1, lines_read);
             addLexemeToList(lexemeList, newLex);
             // increment lines read count for every newline encountered
             lines_read++;
@@ -1123,6 +1132,27 @@ typedef struct SymbolTable{
     int numEntries;
     Entry** entries;
 } SymbolTable;
+
+
+// * ----------
+union Data {
+    int int_Result;
+    float flt_Result;
+    char *string_Result;
+    // int bool_Result;
+};
+
+// 0 - arith, comparison
+// 1 - concat -> string
+// 2 - boolean
+typedef struct {
+    int expr_source_type;
+    int float_flag;
+    union Data eval_data;
+} EvalData;
+
+// * ----------
+
 
 void print_table(SymbolTable* table);
 Entry* create_var_entry_int(char *id, int val);
