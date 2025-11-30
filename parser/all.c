@@ -117,6 +117,9 @@ void print_table(SymbolTable* table){
                 case TYPE_TYPE:
                     printf("%-3d | %-20s | %-10s | %-10s | %-30s\n", i, table->entries[i]->id, symType_strings[table->entries[i]->symType], varType_strings[table->entries[i]->varType], table->entries[i]->value.stringVal);        
                     break;
+				case TYPE_NONE:
+                    printf("%-3d | %-20s | %-10s | %-10s | %-30s\n", i, table->entries[i]->id, symType_strings[table->entries[i]->symType], varType_strings[table->entries[i]->varType], "None");        
+                    break;
             }
         // } else if (table->entries[i]->symType == SYM_FUN){
                     // printf("%-3d | %-20s | %-10s | %-10s | %-30s", i, table->entries[i]->id, symType_strings[table->entries[i]->symType], "N/A", "N/A");        
@@ -204,7 +207,7 @@ Entry* create_var_entry_no_type(char *id){
         exit(1);
     }    newEntry->id = strdup(id);
     newEntry->symType = SYM_VAR;
-    newEntry->varType = TYPE_NOOB;
+    newEntry->varType = TYPE_NONE;
     return newEntry;
 }
 
@@ -231,7 +234,7 @@ Entry* create_param_entry(char *id){
 }
 
 void addSymTableEntry(SymbolTable* table, Entry* e){
-    Entry **temp = realloc(table->entries, sizeof(Entry*) * table->numEntries+1);
+    Entry **temp = realloc(table->entries, sizeof(Entry*) * (table->numEntries + 1));
     if(temp == NULL){
         printf("Add symbol table entry realloc error.\n");
         exit(1);
@@ -248,40 +251,63 @@ SymbolTable* initSymbolTable(){
     return newTable;
 }
 
-int setVarEntryValInt(char* id, int val){
+void setVarEntryValInt(char* id, int val){
 	for(int i = 0; i < symTable->numEntries; i++){
-		if(strcmp(symTable->entries[i]->id, id) == 0){
+		if(strcmp(symTable->entries[i]->id, id) == 0 && symTable->entries[i]->symType == SYM_VAR){
 			symTable->entries[i]->value.intVal = val;
+			return;
 		}
 	}
+	syntaxError("Undeclared variable");
 }
-int setVarEntryValFloat(char* id, float val){
+
+void setVarEntryValFloat(char* id, float val){
 	for(int i = 0; i < symTable->numEntries; i++){
-		if(strcmp(symTable->entries[i]->id, id) == 0){
+		if(strcmp(symTable->entries[i]->id, id) == 0 && symTable->entries[i]->symType == SYM_VAR){
 			symTable->entries[i]->value.floatVal = val;
+			return;
 		}
 	}
+	syntaxError("Undeclared variable");
 }
-int setVarEntryValString(char* id, char* val){
+
+void setVarEntryValString(char* id, char* val){
 	for(int i = 0; i < symTable->numEntries; i++){
-		if(strcmp(symTable->entries[i]->id, id) == 0){
+		if(strcmp(symTable->entries[i]->id, id) == 0 && symTable->entries[i]->symType == SYM_VAR){
 			symTable->entries[i]->value.stringVal = strdup(val);
+			return;
 		}
 	}
+	syntaxError("Undeclared variable");
 }
-int setVarEntryValBool(char* id, int val){
+
+void setVarEntryValBool(char* id, int val){
 	for(int i = 0; i < symTable->numEntries; i++){
-		if(strcmp(symTable->entries[i]->id, id) == 0){
+		if(strcmp(symTable->entries[i]->id, id) == 0 && symTable->entries[i]->symType == SYM_VAR){
 			symTable->entries[i]->value.intVal = val;
+			return;
 		}
 	}
+	syntaxError("Undeclared variable");
 }
-int setVarEntryValType(char* id, char* val){
+
+void setVarEntryValType(char* id, char* val){
 	for(int i = 0; i < symTable->numEntries; i++){
-		if(strcmp(symTable->entries[i]->id, id) == 0){
+		if(strcmp(symTable->entries[i]->id, id) == 0 && symTable->entries[i]->symType == SYM_VAR){
 			symTable->entries[i]->value.stringVal = strdup(val);
+			return;
 		}
 	}
+	syntaxError("Undeclared variable");
+}
+
+Entry* searchVarEntry(char* id){
+	for(int i = 0; i < symTable->numEntries; i++){
+		if(strcmp(symTable->entries[i]->id, id) == 0 && symTable->entries[i]->symType == SYM_VAR){
+			return symTable->entries[i];
+		}
+	}
+	return NULL;
 }
 
 /*
@@ -362,13 +388,52 @@ ast_node* var_dec(){
 				addChildNoIncrement(n, c2);
 				switch(c2->children[0]->type){
 					case TOK_INTEGER:
-						addSymTableEntry(symTable, create_var_entry_int(c1->children[0]->id_name, (int) c2->children[0]->num_val));
-						// addSymTableEntry(symTable, create_var_entry_int(c1->children[0]->id_name, symTable->entries[0]->value.intVal));
+						// addSymTableEntry(symTable, create_var_entry_int(c1->children[0]->id_name, (int) c2->children[0]->num_val));
+						addSymTableEntry(symTable, create_var_entry_int(c1->children[0]->id_name, symTable->entries[0]->value.intVal));
+						break;
+					case TOK_FLOAT:
+						// addSymTableEntry(symTable, create_var_entry_int(c1->children[0]->id_name, (int) c2->children[0]->num_val));
+						addSymTableEntry(symTable, create_var_entry_float(c1->children[0]->id_name, symTable->entries[0]->value.floatVal));
+						break;
+					case TOK_STRING:
+						// addSymTableEntry(symTable, create_var_entry_int(c1->children[0]->id_name, (int) c2->children[0]->num_val));
+						addSymTableEntry(symTable, create_var_entry_string(c1->children[0]->id_name, symTable->entries[0]->value.stringVal));
+						break;
+					case TOK_BOOLEAN:
+						// addSymTableEntry(symTable, create_var_entry_int(c1->children[0]->id_name, (int) c2->children[0]->num_val));
+						addSymTableEntry(symTable, create_var_entry_bool(c1->children[0]->id_name, symTable->entries[0]->value.intVal));
+						break;
+					case TOK_TYPE:
+						// addSymTableEntry(symTable, create_var_entry_int(c1->children[0]->id_name, (int) c2->children[0]->num_val));
+						addSymTableEntry(symTable, create_var_entry_type(c1->children[0]->id_name, symTable->entries[0]->value.stringVal));
 						break;
 					default:
+						// assigned value is an expression
+						// switch(c2->children[0]->n){
+						// 	case TOK_INTEGER:
+						// 		// addSymTableEntry(symTable, create_var_entry_int(c1->children[0]->id_name, (int) c2->children[0]->num_val));
+						// 		addSymTableEntry(symTable, create_var_entry_int(c1->children[0]->id_name, symTable->entries[0]->value.intVal));
+						// 		break;
+						// 	case TOK_FLOAT:
+						// 		// addSymTableEntry(symTable, create_var_entry_int(c1->children[0]->id_name, (int) c2->children[0]->num_val));
+						// 		addSymTableEntry(symTable, create_var_entry_float(c1->children[0]->id_name, symTable->entries[0]->value.floatVal));
+						// 		break;
+						// 	case TOK_STRING:
+						// 		// addSymTableEntry(symTable, create_var_entry_int(c1->children[0]->id_name, (int) c2->children[0]->num_val));
+						// 		addSymTableEntry(symTable, create_var_entry_string(c1->children[0]->id_name, symTable->entries[0]->value.stringVal));
+						// 		break;
+						// 	case TOK_BOOLEAN:
+						// 		// addSymTableEntry(symTable, create_var_entry_int(c1->children[0]->id_name, (int) c2->children[0]->num_val));
+						// 		addSymTableEntry(symTable, create_var_entry_bool(c1->children[0]->id_name, symTable->entries[0]->value.intVal));
+						// 		break;
+						// 	case TOK_TYPE:
+						// 		// addSymTableEntry(symTable, create_var_entry_int(c1->children[0]->id_name, (int) c2->children[0]->num_val));
+						// 		addSymTableEntry(symTable, create_var_entry_type(c1->children[0]->id_name, symTable->entries[0]->value.stringVal));
+						// 		break;
+						// }
 				}
 			} else {
-			
+				addSymTableEntry(symTable, create_var_entry_no_type(c1->children[0]->id_name));
 			}
 		} else {
 			syntaxError("Expected identifier after I HAS A");
@@ -382,7 +447,7 @@ ast_node* var_dec(){
 
 ast_node* var_val(){
 	ast_node *n = createNode(VAR_VAL), *s;
-	// trace("", string_ver[n->type]);
+	trace("", string_ver[n->type]);
 	switch(curType){
 		case TOK_IDENT:
 			s = createNode(IDENT);
@@ -392,6 +457,7 @@ ast_node* var_val(){
 		case TOK_INTEGER:
 			s = createNode(INTEGER);
 			s->num_val = atoi((*cur)->lexeme);
+			trace("", "VAR_VAL");
 			setVarEntryValInt("IT", s->num_val);
 			addChild(n, s);
 			break;
@@ -409,7 +475,11 @@ ast_node* var_val(){
 			break;
 		case TOK_BOOLEAN:
 			s = createNode(BOOLEAN);
-			s->string_val = (*cur)->lexeme;
+			if(strcmp((*cur)->lexeme, "WIN") == 0){
+				s->num_val = 1;
+			} else {
+				s->num_val = 0;
+			}
 			setVarEntryValInt("IT", s->num_val);
 			addChild(n, s);
 			break;
@@ -432,7 +502,8 @@ ast_node* var_val(){
 			}
 			if(isExprKeyword){
 				// trace("expr keyword found", string_ver[n->type]);
-				addChildNoIncrement(n, expr());
+				s = expr();
+				addChildNoIncrement(n, s);
 			} else {
 				if(curType != TOK_MAEK) syntaxError("Expected identifier/literal");
 			}
@@ -517,10 +588,15 @@ ast_node* single_stmt(){
 }
 
 ast_node* print(){
-	ast_node *n;
+	ast_node *n, *s;
 	n = createNode(PRINT);
-	addChild(n, createNode(PRINT));
+	addChild(n, createNode(VISIBLE));
 	addChildNoIncrement(n, var_val());
+	if(curType == TOK_PLUS){	// check for multiple print operands
+		addChild(n, createNode(PLUS));
+		s = var_val();
+		
+	}
 	return n;
 }
 
@@ -528,7 +604,13 @@ ast_node* input(){
 	ast_node *n;
 	n = createNode(INPUT);
 	addChild(n, createNode(GIMMEH));
-	if(curType == IDENT) {
+	if(curType == TOK_IDENT) {
+		Entry *e = searchVarEntry((*cur)->lexeme);
+		if(e == NULL) syntaxError("Undeclared destination variable for input.");
+		e->varType = TYPE_STRING;
+		char usrInput[500]; 
+		scanf("%s", usrInput);
+		setVarEntryValString((*cur)->lexeme, usrInput);
 		addChildNoIncrement(n, var_val());
 	} else {
 		syntaxError("Expected Identifier in GIMMEH");
@@ -646,15 +728,17 @@ ast_node* expr(){
 
 /* Rules: <arithmetic> ::= (SUM OF | DIFF OF | PRODUKT OF | QUOSHUNT OF | MOD OF) <var_value> AN <var_value> */
 ast_node* arithmetic(){
-	ast_node* n;
+	ast_node* n, *op1, *op2;
 	n = createNode(ARITHMETIC);
 	switch(curType){
 		case TOK_SUM_OF:
 			addChild(n, createNode(SUM_OF));
-			addChildNoIncrement(n, var_val());
+			op1 = var_val();
+			addChildNoIncrement(n, op1);
 			if(curType == TOK_AN){
 				addChild(n, createNode(AN));
-				addChildNoIncrement(n, var_val());	
+				op2 = var_val();
+				addChildNoIncrement(n, op2);	
 			} else {
 				syntaxError("Expected arg separator AN in binary arithmetic");
 			}
@@ -1181,6 +1265,7 @@ int main(){
 	ast_node* root = program(tokList, tokList->numTokens);
 	// printf("ROOT HAS %d children\n", root->numChildren);
 	print_ast_root_f(root, outfile);
+	print_table(symTable);
 
 	// // printf("%d\n", root->children[0]->type);1
 	// // visit2(root, -1, -1, 'S');

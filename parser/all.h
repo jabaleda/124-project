@@ -470,7 +470,7 @@ LexemeList* lex(/*FILE* fp*/) {
         size += line_length;
         // printf("\nLine length: %d\n", line_length);
         // reallocate memomy for buffer
-        lines_read_buffer = realloc(lines_read_buffer, sizeof(char) * size + 1);
+        lines_read_buffer = realloc(lines_read_buffer, (sizeof(char) * size + 1));
         // join new line to buffer
         strcat(lines_read_buffer, line);
         // printf("Current buffer size: %d\n", size);
@@ -710,7 +710,7 @@ TokenList* createTokenList(){
 
 int addToken(TokenList* list, Token* newToken){
     Token **temp = NULL;
-    temp = realloc(list->tokens, sizeof(Token*) * list->numTokens + 1);
+    temp = realloc(list->tokens, sizeof(Token*) * (list->numTokens + 1));
     if(temp != NULL){
         list->tokens = temp;
         list->tokens[list->numTokens] = newToken;
@@ -1020,7 +1020,7 @@ typedef enum{
     TYPE_STRING,
     TYPE_BOOL,
     TYPE_TYPE,
-    TYPE_NOOB   // for uninitialized
+    TYPE_NONE   // for uninitialized
 } VarType;
 
 char* varType_strings[] = {
@@ -1029,7 +1029,7 @@ char* varType_strings[] = {
     "String",
     "Boolean",
     "Type",
-    "Noob"
+    "None"
 };
 
 typedef enum{
@@ -1068,11 +1068,12 @@ Entry* create_var_entry_type(char *id, char *val);
 Entry* create_var_entry_no_type(char *id);
 Entry* create_function_entry(char *id);
 Entry* create_param_entry(char *id);
-int setVarEntryValInt(char* id, int val);
-int setVarEntryValFloat(char* id, float val);
-int setVarEntryValString(char* id, char* val);
-int setVarEntryValBool(char* id, int val);
-int setVarEntryValType(char* id, char* val);
+void setVarEntryValInt(char* id, int val);
+void setVarEntryValFloat(char* id, float val);
+void setVarEntryValString(char* id, char* val);
+void setVarEntryValBool(char* id, int val);
+void setVarEntryValType(char* id, char* val);
 void addSymTableEntry(SymbolTable* table, Entry* e);
 SymbolTable* initSymbolTable();
+Entry* searchVarEntry(char* id);
 
