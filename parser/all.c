@@ -1214,6 +1214,7 @@ If at least one operand is a NUMBAR, the result of the operation is a NUMBAR.
 */
 // SUM OF | DIFF OF | PRODUKT OF | QUOSHUNT OF
 void *arith_evaluator(ast_node *node, EvalData *answer) {
+	printf("%s \n", string_ver[node->type]);
 	// check first child for operator
 	ast_node *first_child = node->children[0];
 	// operands
@@ -1227,11 +1228,45 @@ void *arith_evaluator(ast_node *node, EvalData *answer) {
 	int left_int, right_int, result_int;
 	float left_fl, right_fl, result_fl;
 
-	
+	// check if they are expr (NESTED) then evaluate first before returning here
+	printf("%s \n", string_ver[left_operand->children[0]->type]);
+	if(left_operand->children[0]->type == EXPR) {
+		EvalData *evaled = createEvalData();
+		arith_evaluator(left_operand->children[0]->children[0], evaled);
+		// check flags and set operands accdgly
+		left_float_flag = evaled->float_flag;
+		switch (left_float_flag) {
+		case 0:
+			left_int = evaled->eval_data.int_Result;
+			break;
+		case 1:
+			left_fl = evaled->eval_data.flt_Result;
+			break;
+		default:
+			break;
+		}
+	}
+	printf("%s \n", string_ver[right_operand->children[0]->type]);
+	if(right_operand->children[0]->type == EXPR) {
+		EvalData *evaled = createEvalData();
+		arith_evaluator(right_operand->children[0]->children[0], evaled);
+		// check flags and set operands accdgly
+		right_float_flag = evaled->float_flag;
+		switch (right_float_flag) {
+		case 0:
+			right_int = evaled->eval_data.int_Result;
+			break;
+		case 1:
+			right_fl = evaled->eval_data.flt_Result;
+			break;
+		default:
+			break;
+		}
+	}
+
 	// 0 0 -> NUMBR
 	// 0 1 || 1 0 -> NUMBAR
 	// 11 -> NUMBAR
-
 	if(left_operand->type == VAR_VAL) {
 		ast_node *lo_val = left_operand->children[0];
 	
@@ -1360,15 +1395,14 @@ void *arith_evaluator(ast_node *node, EvalData *answer) {
 								result_fl = (float)left_int / right_fl;
 								break;
 							case 1:
-								result_fl = left_fl + (float)right_int;
+								result_fl = left_fl / (float)right_int;
 								break;
 						}
 					}
-					result_fl = (float)left_fl / (float)right_fl;
 					answer->eval_data.flt_Result = result_fl;
 				} else {
 					// resulted to 0, eval as NUMBR
-					result_int = left_int + right_int;
+					result_int = left_int / right_int;
 					answer->eval_data.int_Result = result_int;
 				}
 			} else {
