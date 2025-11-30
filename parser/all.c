@@ -1630,4 +1630,4 @@ int main(){
 	printf("---------- INTERPRETING... ----------\n");
 	interpret_walk(symTable, root);
 	// Julianne
-}
+}	
