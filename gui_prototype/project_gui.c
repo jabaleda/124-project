@@ -12,8 +12,16 @@ static GtkWidget *file_read;
 static GListStore *lex_store;
 static GListStore *st_store;
 static GtkWidget *terminal_view;
+
+static char file_pathname[1000];
+
 #define LEXEME_ITEM_TYPE lexeme_item_get_type()
 #define SYMBOL_ITEM_TYPE symbol_item_get_type()
+
+#ifndef ALL_C
+#define ALL_C
+#include "all.c"
+#endif
 
 typedef struct _LexemeItem {
     GObject parent_instance;
@@ -78,6 +86,9 @@ static void file_chosen(GtkButton *button, gpointer data){
             g_print("File chosen: %s\n", file_path);
             gtk_text_view_set_editable(GTK_TEXT_VIEW(file_read), TRUE);
             load_file(file_path);
+
+            strcpy(file_pathname, file_path);
+
         } else {
             //check if file_read is NULL
             if(GTK_IS_TEXT_VIEW(file_read)){
@@ -150,6 +161,8 @@ static void on_bind_symbol_value(GtkListItemFactory *factory, GtkListItem *item,
 static void click_exec(GtkButton *button, gpointer data){
     GtkTextBuffer *buff = gtk_text_view_get_buffer(GTK_TEXT_VIEW(terminal_view));
     gtk_text_buffer_insert_at_cursor(buff, "Executing...\n", -1);
+    // gtk_text_buffer_insert_at_cursor(buff, file_pathname, -1);
+    execute_code(file_pathname, terminal_view, buff);
 }
 
 //open file chooser menu

@@ -1,34 +1,27 @@
 BTW start of the program
 HAI
-    WAZZUP
-        BTW variable dec
-        I HAS A monde
-        I HAS A num ITZ 17
-        I HAS A num ITZ -20
-        I HAS A name ITZ "seventeen"
-        I HAS A fnum ITZ 17.0
-        I HAS A flag ITZ WIN
-        
-        I HAS A sum ITZ SUM OF num AN 13
-        I HAS A diff ITZ DIFF OF sum AN 17
-        I HAS A prod ITZ PRODUKT OF 3 AN 4
-        I HAS A quo ITZ QUOSHUNT OF 4 AN 5
+    WAZZUP BTW variable dec
+    I HAS A var0
+    I HAS A var1 ITZ 10                          
+    I HAS A var2 ITZ 9
+    BTW I HAS A var3 ITZ SUM OF var1 AN var2                       
     BUHBYE
 
     BTW print literals and variables
+    VISIBLE 1
     VISIBLE "declarations"
-    VISIBLE monde BTW should be NOOB
-    VISIBLE num
-    VISIBLE name
-    VISIBLE fnum
-    VISIBLE flag
+    VISIBLE 2.0
+    SUM OF 3 AN 4
 
-    VISIBLE sum
-    VISIBLE diff
-    VISIBLE prod
-    VISIBLE quo
+    VISIBLE var1
+    VISIBLE var2
+    VISIBLE SUM OF 10 AN QUOSHUNT OF 10.0 AN 9
+    BTW var3 R SUM OF var1 AN QUOSHUNT OF var1 AN var2
+    BTW VISIBLE WIN
+    BTW VISIBLE monde BTW should be NOOB
+
+    BTW VISIBLE SUM OF DIFF OF var1 AN var2 AN var1
 
     BTW print expressions
-    VISIBLE SUM OF PRODUKT OF 3 AN 5 AN BIGGR OF DIFF OF 17 AN 2 AN 5
-    VISIBLE BIGGR OF PRODUKT OF 11 AN 2 AN QUOSHUNT OF SUM OF 3 AN 5 AN 2
+    VISIBLE SUM OF PRODUKT OF 3 AN 5 AN DIFF OF 17 AN 2 
 KTHXBYE
