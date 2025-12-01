@@ -4,7 +4,7 @@ HAI
     I HAS A var0
     I HAS A var1 ITZ 10                          
     I HAS A var2 ITZ 9
-    BTW I HAS A var3 ITZ SUM OF var1 AN var2                       
+    I HAS A var3 ITZ SUM OF var1 AN var2                       
     BUHBYE
 
     BTW print literals and variables
@@ -22,5 +22,5 @@ HAI
     BTW VISIBLE SUM OF DIFF OF var1 AN var2 AN var1
 
     BTW print expressions
-    VISIBLE SUM OF PRODUKT OF 3 AN 5 AN DIFF OF 17 AN 2 
+    BTW VISIBLE SUM OF PRODUKT OF 3 AN 5 AN DIFF OF 17 AN 2 
 KTHXBYE

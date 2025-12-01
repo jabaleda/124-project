@@ -112,7 +112,7 @@ void print_table(SymbolTable* table){
                     printf("%-3d | %-20s | %-10s | %-10s | %-30s\n", i, table->entries[i]->id, symType_strings[table->entries[i]->symType], varType_strings[table->entries[i]->varType], table->entries[i]->value.stringVal);        
                     break;
                 case TYPE_BOOL:
-                    printf("%-3d | %-20s | %-10s | %-10s | %-30s\n", i, table->entries[i]->id, symType_strings[table->entries[i]->symType], varType_strings[table->entries[i]->varType], table->entries[i]->value.intVal == 1? "True" : "False");        
+                    printf("%-3d | %-20s | %-10s | %-10s | %-30s\n", i, table->entries[i]->id, symType_strings[table->entries[i]->symType], varType_strings[table->entries[i]->varType], table->entries[i]->value.intVal == 1 ? "True" : "False");        
                     break;
                 case TYPE_TYPE:
                     printf("%-3d | %-20s | %-10s | %-10s | %-30s\n", i, table->entries[i]->id, symType_strings[table->entries[i]->symType], varType_strings[table->entries[i]->varType], table->entries[i]->value.stringVal);        
@@ -345,6 +345,37 @@ ast_node* program(TokenList* tokenList, int numTokens){
 	return n;
 }
 
+
+// * ----- addtnl helper
+void literal_varDec_symTable_adder(VarType type, ast_node *c1, ast_node *c2, EvalData *result) {
+	switch(type){
+		case TOK_INTEGER:
+			addSymTableEntry(symTable, create_var_entry_int(c1->children[0]->id_name, result->eval_data.int_Result));
+			// addSymTableEntry(symTable, create_var_entry_int(c1->children[0]->id_name, symTable->entries[0]->value.intVal));
+			break;
+		case TOK_FLOAT:
+			addSymTableEntry(symTable, create_var_entry_float(c1->children[0]->id_name, result->eval_data.flt_Result));
+			break;
+		case TOK_STRING:
+			addSymTableEntry(symTable, create_var_entry_string(c1->children[0]->id_name, result->eval_data.string_Result));
+			break;
+		case TOK_BOOLEAN:
+			if(strcmp(c2->children[0]->string_val, "WIN") == 0){
+				addSymTableEntry(symTable, create_var_entry_bool(c1->children[0]->id_name, 1));
+			} else {
+				// a FAIL
+				addSymTableEntry(symTable, create_var_entry_bool(c1->children[0]->id_name, 0));
+			}
+			break;
+		default:
+			addSymTableEntry(symTable, create_var_entry_no_type(c1->children[0]->id_name));
+			break;
+	}
+}
+// * ---
+
+
+
 ast_node* var_dec(){
 	ast_node* n = createNode(VAR_DEC), *c1, *c2;
 	do{
@@ -360,13 +391,66 @@ ast_node* var_dec(){
 				addChild(n, createNode(ITZ));
 				c2 = var_val();
 				addChildNoIncrement(n, c2);
-				switch(c2->children[0]->type){
-					case TOK_INTEGER:
-						addSymTableEntry(symTable, create_var_entry_int(c1->children[0]->id_name, (int) c2->children[0]->num_val));
-						// addSymTableEntry(symTable, create_var_entry_int(c1->children[0]->id_name, symTable->entries[0]->value.intVal));
-						break;
-					default:
+
+				// branch betwn literal or expression assignment
+				if(c2->children[0]->type != EXPR) {
+					// assign literal to var
+					EvalData *literal = createEvalData();
+					switch(c2->children[0]->type) {
+						case TOK_INTEGER:
+							literal->eval_data.int_Result = c2->children[0]->num_val;
+							break;
+						case TOK_FLOAT:
+							literal->eval_data.flt_Result = c2->children[0]->num_val;
+							break;
+						case TOK_STRING:
+							literal->eval_data.string_Result = c2->children[0]->string_val;
+							break;
+						case TOK_BOOLEAN:
+							break;
+					}
+					literal_varDec_symTable_adder(c2->children[0]->type, c1, c2, literal);
+				} else {
+					// Eval expression then set in symbol table
+					printf("expr assignment found! Evaluating...\n");
+					EvalData *evalAssign = createEvalData();
+					evalAssign = subtree_walk(c2->children[0]);
+					VarType caughtType;
+					switch(evalAssign->expr_source_type) {
+						case 0:
+							// int or float
+							caughtType = evalAssign->float_flag ? TYPE_FLOAT : TYPE_INT;
+							break;
+						case 1:
+							// a string
+							caughtType = TYPE_STRING;
+							break;
+						case 2:
+							// a bool
+							caughtType = TYPE_BOOL;
+							break;
+						default:
+							caughtType = TYPE_NOOB;
+							break;
+					}
+					literal_varDec_symTable_adder(caughtType, c1, c2, evalAssign);
 				}
+
+
+				// switch(c2->children[0]->type){
+				// 	case TOK_INTEGER:
+				// 	case TOK_FLOAT:
+				// 	case TOK_STRING:
+				// 	case TOK_BOOLEAN:
+				// 		EvalData *literal_value = createEvalData();
+				// 		// TODO: Fix value passing to function contra expr and literal
+				// 		// literal_varDec_symTable_adder(c2->children[0]->type, c1, c2);
+				// 		break;
+				// 	case EXPR:
+						
+				// 		break;
+				// 	default:
+				// }
 			} else {
 			
 			}
@@ -1236,14 +1320,35 @@ void *arith_evaluator(ast_node *node, EvalData *answer) {
 		// check flags and set operands accdgly
 		left_float_flag = evaled->float_flag;
 		switch (left_float_flag) {
-		case 0:
-			left_int = evaled->eval_data.int_Result;
-			break;
-		case 1:
-			left_fl = evaled->eval_data.flt_Result;
-			break;
-		default:
-			break;
+			case 0:
+				left_int = evaled->eval_data.int_Result;
+				break;
+			case 1:
+				left_fl = evaled->eval_data.flt_Result;
+				break;
+			default:
+				break;
+		}
+	} else if(left_operand->children[0]->type == IDENT) {
+		// find id_name and get value from symbol table
+		// check with symbol table
+		printf(left_operand->children[0]->id_name);
+		int ident_num = find_ident_num(symTable, left_operand->children[0]->id_name);
+		VarType val_type = symTable->entries[ident_num]->varType;
+		switch(val_type) {
+			case TYPE_INT:
+				left_int = symTable->entries[ident_num]->value.intVal;
+				break;
+			case TYPE_FLOAT:
+				left_fl = symTable->entries[ident_num]->value.floatVal;
+				left_float_flag = 1;
+				break;
+			// PERFORM TYPECASTINNG IF NOT EXPLICITLY NUMERICAL
+			// case TYPE_BOOL:
+			
+			// default to string to output
+			default:
+				// printf("%s\n", symTable->entries[ident_num]->value.stringVal);
 		}
 	}
 	printf("%s \n", string_ver[right_operand->children[0]->type]);
@@ -1261,6 +1366,26 @@ void *arith_evaluator(ast_node *node, EvalData *answer) {
 			break;
 		default:
 			break;
+		}
+	} else if(right_operand->children[0]->type == IDENT) {
+		// find id_name and get value from symbol table
+		// check with symbol table
+		int ident_num = find_ident_num(symTable, right_operand->children[0]->id_name);
+		VarType val_type = symTable->entries[ident_num]->varType;
+		switch(val_type) {
+			case TYPE_INT:
+				right_int = symTable->entries[ident_num]->value.intVal;
+				break;
+			case TYPE_FLOAT:
+				right_fl = symTable->entries[ident_num]->value.floatVal;
+				right_float_flag = 1;
+				break;
+			// PERFORM TYPECASTINNG IF NOT EXPLICITLY NUMERICAL
+			// case TYPE_BOOL:
+			
+			// default to string to output
+			default:
+				// printf("%s\n", symTable->entries[ident_num]->value.stringVal);
 		}
 	}
 
@@ -1381,7 +1506,6 @@ void *arith_evaluator(ast_node *node, EvalData *answer) {
 			}
 			break;
 		case QUOSHUNT_OF:
-			
 			if(right_fl != 0) {
 				// check if NUMBR or NUMBAR
 				if(left_float_flag || right_float_flag == 1){
@@ -1410,11 +1534,11 @@ void *arith_evaluator(ast_node *node, EvalData *answer) {
 			}
 			break;
 		default: 
-			printf("!!! Error. Unknown arithmetic operation!\n");
+			printf("!!! Error. Unknown arithmetic operation in node: %d!\n", node->node_id);
 	}
 
 	// pack evaluation, to return to print
-	answer->expr_source_type = 1;
+	answer->expr_source_type = 0;		// from arithmetic expression -> int/float 
 	answer->float_flag = left_float_flag || right_float_flag;
 }
 
@@ -1433,6 +1557,7 @@ int expr_type_check(ast_node *node) {
 
 
 EvalData *subtree_walk(ast_node *node) {
+	// print_table(symTable);
 	printf("%s \n", string_ver[node->type]);
 	if(node->type == VAR_VAL) {
 		ast_node *child = node->children[0];
@@ -1531,9 +1656,10 @@ void interpret_walk(SymbolTable *table, ast_node *node) {
 			case FLOAT:
 				printf("%f\n", print_op->num_val);
 				return;
-			// case BOOLEAN:
+			case BOOLEAN:
 				// print literal to terminal
-				// return
+				printf("%s\n", print_op->bool_val ? "WIN" : "FAIL");
+				return;
 			case IDENT:
 				// check with symbol table
 				int ident_num = find_ident_num(table, print_op->id_name);
@@ -1546,7 +1672,9 @@ void interpret_walk(SymbolTable *table, ast_node *node) {
 					case TYPE_FLOAT:
 						printf("%f\n", table->entries[ident_num]->value.floatVal);
 						break;
-					// case TYPE_BOOL:
+					case TYPE_BOOL:
+						printf("%s\n", table->entries[ident_num]->value.intVal ? "WIN" : "FAIL");
+						break;
 					
 					// default to string to output
 					default:
@@ -1568,7 +1696,8 @@ void interpret_walk(SymbolTable *table, ast_node *node) {
 							printf("%f\n", result->eval_data.flt_Result);
 						} else if(result->float_flag == 0) {
 							printf("%d\n", result->eval_data.int_Result);
-						} // else 
+						} // else
+						break; 
 						
 				}
 				// print return val
@@ -1616,6 +1745,9 @@ int main(){
 
 	cur = tokList->tokens;
 	FILE *outfile = fopen("tree.txt","w");
+
+	// print_table(symTable);
+
 	ast_node* root = program(tokList, tokList->numTokens);
 	printf("ROOT HAS %d children\n", root->numChildren);
 	print_ast_root_f(root, outfile);

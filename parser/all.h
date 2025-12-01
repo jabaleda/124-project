@@ -456,7 +456,7 @@ LexemeList* lex(/*FILE* fp*/) {
     int size = 0;
 
     // ? vary filename as needed. hardcoded file naming munaaa d2
-    char *cwd = "C:/Users/Julianne/Documents/25-26/CMSC-124/project/repo-files/lexer/sample.lol";
+    char *cwd = "C:/Users/Julianne/Documents/25-26/CMSC-124/lolcode-testcases-main/lolcode-testcases-main/project-testcases-fixed/01_variables.lol";
     // char *cwd = "sample.lol";
 
     printf("File path: %s\n", cwd);
@@ -958,6 +958,7 @@ typedef struct ast_node{
 		float num_val; // for numeric value ng literal?
 		char* id_name; 	// for ident
 		char* string_val;	// for string literal
+        int bool_val;   // for boolean literal
         struct ast_node** children; // for non-terminal's/root child nodes
 	};
 	int numChildren;
@@ -1142,7 +1143,7 @@ union Data {
     // int bool_Result;
 };
 
-// 0 - arith, comparison
+// 0 - arith, comparison -> int or float
 // 1 - concat -> string
 // 2 - boolean
 // Data type used to pass around result of evaluated expressions
@@ -1153,6 +1154,7 @@ typedef struct {
 } EvalData;
 
 EvalData *createEvalData();
+EvalData *subtree_walk(ast_node *node);
 
 // * ----------
 
