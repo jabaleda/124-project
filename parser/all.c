@@ -1676,12 +1676,11 @@ void arith_evaluator(ast_node *node, EvalData *answer) {
 
 	// pack evaluation, to return to print or somewhere
 	switch(answer->expr_source_type) {
-		case 0: 
-			answer->expr_source_type = 0;		// from arithmetic expression -> int/float 
-			break;
 		case 2:
 			answer->expr_source_type = 2;
 			break;
+		default:
+			answer->expr_source_type = 0;
 	}
 	
 	answer->float_flag = (left_float_flag || right_float_flag) ? 1 : 0;
