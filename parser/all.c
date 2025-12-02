@@ -118,7 +118,7 @@ void print_table(SymbolTable* table){
                     printf("%-3d | %-20s | %-10s | %-10s | %-30s\n", i, table->entries[i]->id, symType_strings[table->entries[i]->symType], varType_strings[table->entries[i]->varType], table->entries[i]->value.stringVal);        
                     break;
 				case TYPE_NOOB:
-                    printf("%-3d | %-20s | %-10s | %-10s | %-30s\n", i, table->entries[i]->id, symType_strings[table->entries[i]->symType], varType_strings[table->entries[i]->varType], table->entries[i]->value.stringVal);        
+                    printf("%-3d | %-20s | %-10s | %-10s | %-30s\n", i, table->entries[i]->id, symType_strings[table->entries[i]->symType], varType_strings[table->entries[i]->varType], "null");        
                     break;
             }
         // } else if (table->entries[i]->symType == SYM_FUN){
@@ -1297,9 +1297,9 @@ If both operands evaluate to a NUMBR, the result of the operation is a NUMBR.
 If at least one operand is a NUMBAR, the result of the operation is a NUMBAR.
 
 */
-// SUM OF | DIFF OF | PRODUKT OF | QUOSHUNT OF
+// SUM OF | DIFF OF | PRODUKT OF | QUOSHUNT OF | MOD OF | BIGGR OF | SMALLR OF
 void *arith_evaluator(ast_node *node, EvalData *answer) {
-	printf("%s \n", string_ver[node->type]);
+	// printf("%s \n", string_ver[node->type]);
 	// check first child for operator
 	ast_node *first_child = node->children[0];
 	// operands
@@ -1314,7 +1314,7 @@ void *arith_evaluator(ast_node *node, EvalData *answer) {
 	float left_fl, right_fl, result_fl;
 
 	// check if they are expr (NESTED) then evaluate first before returning here
-	printf("%s \n", string_ver[left_operand->children[0]->type]);
+	// printf("%s \n", string_ver[left_operand->children[0]->type]);
 	if(left_operand->children[0]->type == EXPR) {
 		EvalData *evaled = createEvalData();
 		arith_evaluator(left_operand->children[0]->children[0], evaled);
@@ -1333,7 +1333,7 @@ void *arith_evaluator(ast_node *node, EvalData *answer) {
 	} else if(left_operand->children[0]->type == IDENT) {
 		// find id_name and get value from symbol table
 		// check with symbol table
-		printf(left_operand->children[0]->id_name);
+		// printf(left_operand->children[0]->id_name);
 		int ident_num = find_ident_num(symTable, left_operand->children[0]->id_name);
 		VarType val_type = symTable->entries[ident_num]->varType;
 		switch(val_type) {
@@ -1350,9 +1350,10 @@ void *arith_evaluator(ast_node *node, EvalData *answer) {
 			// default to string to output
 			default:
 				// printf("%s\n", symTable->entries[ident_num]->value.stringVal);
+				break;
 		}
 	}
-	printf("%s \n", string_ver[right_operand->children[0]->type]);
+	// printf("%s \n", string_ver[right_operand->children[0]->type]);
 	if(right_operand->children[0]->type == EXPR) {
 		EvalData *evaled = createEvalData();
 		arith_evaluator(right_operand->children[0]->children[0], evaled);
@@ -1387,6 +1388,7 @@ void *arith_evaluator(ast_node *node, EvalData *answer) {
 			// default to string to output
 			default:
 				// printf("%s\n", symTable->entries[ident_num]->value.stringVal);
+				break;
 		}
 	}
 
@@ -1444,7 +1446,8 @@ void *arith_evaluator(ast_node *node, EvalData *answer) {
 					// eval as NUMBAR
 					switch(left_float_flag){
 						case 0:
-							result_fl = (float)left_int + right_fl;
+							// left is int -> typecast
+							result_fl =  (float)left_int + right_fl;
 							break;
 						case 1:
 							result_fl = left_fl + (float)right_int;
@@ -1507,7 +1510,7 @@ void *arith_evaluator(ast_node *node, EvalData *answer) {
 			}
 			break;
 		case QUOSHUNT_OF:
-			if(right_fl != 0) {
+			if(right_fl != 0 || right_int != 0) {
 				// check if NUMBR or NUMBAR
 				if(left_float_flag || right_float_flag == 1){
 					// eval as NUMBAR
@@ -1534,19 +1537,96 @@ void *arith_evaluator(ast_node *node, EvalData *answer) {
 				printf("!!! Error: Dividing by 0!");
 			}
 			break;
+		case MOD_OF:
+			// TODO: ? Do we allow MOD OF for float?
+			if(left_float_flag && right_float_flag != 1) {
+				// check if ight_op is not zero
+				if(right_int != 0){
+					// eval as NUMBR
+					result_int = left_int %	right_int;
+					answer->eval_data.int_Result = result_int;
+				} else {
+				printf("!!! Error: Mod with 0!");
+			}
+			} else {
+				printf("!!! Error: Mod with float!");
+			}
+			break;
+		case BIGGR_OF:
+			// check if NUMBR or NUMBAR
+			if(left_float_flag || right_float_flag == 1){
+				// eval as NUMBAR
+				if(left_float_flag && right_float_flag == 1){
+					result_fl = left_fl;
+					if(right_fl > result_fl) { result_fl = right_fl;}
+				} else {
+					// eval as NUMBAR
+					switch(left_float_flag){
+						case 0:
+							// right is float
+							result_fl = (float)left_int;
+							if(right_int > result_fl) { result_fl = right_int; }
+							break;
+						case 1:
+							// left is float
+							result_fl = left_fl;
+							if((float)right_int > result_fl) { result_fl = (float)right_fl; }
+							break;
+					}
+				}
+				answer->eval_data.flt_Result = result_fl;
+			} else {
+				// resulted to 0, eval as NUMBR
+				result_int = left_int;
+				if(right_int > result_int) { result_int = right_int;} 
+				answer->eval_data.int_Result = result_int;
+			}
+			break;
+		case SMALLR_OF:
+		// check if NUMBR or NUMBAR
+			if(left_float_flag || right_float_flag == 1){
+				// eval as NUMBAR
+				if(left_float_flag && right_float_flag == 1){
+					result_fl = left_fl;
+					if(right_fl < result_fl) { result_fl = right_fl;}
+				} else {
+					// eval as NUMBAR
+					switch(left_float_flag){
+						case 0:
+							// right is float
+							result_fl = left_fl;
+							if((float)right_int < result_fl) { result_fl = (float)right_fl; }
+							break;
+						case 1:
+							// left is float
+							result_fl = (float)left_int;
+							if(right_int < result_fl) { result_fl = right_int; }
+							break;
+					}
+				}
+				answer->eval_data.flt_Result = result_fl;
+			} else {
+				// resulted to 0, eval as NUMBR
+				result_int = left_int;
+				if(right_int < result_int) { result_int = right_int;} 
+				answer->eval_data.int_Result = result_int;
+			}
+			break;
 		default: 
 			printf("!!! Error. Unknown arithmetic operation in node: %d!\n", node->node_id);
+			break;
 	}
 
-	// pack evaluation, to return to print
+	// pack evaluation, to return to print or somewhere
 	answer->expr_source_type = 0;		// from arithmetic expression -> int/float 
-	answer->float_flag = left_float_flag || right_float_flag;
+	answer->float_flag = (left_float_flag || right_float_flag) ? 1 : 0;
 }
 
 
 int expr_type_check(ast_node *node) {
 	int type = node->type;
 	switch(type){
+		case RELATIONAL:
 		case ARITHMETIC: return 1;
 		case BOOLEAN: return 2;
 		case COMPARISON: return 3;
@@ -2161,7 +2241,7 @@ EvalData *subtree_walk(ast_node *node) {
 				// case TYPECASTING: 
 
 				default:
-					printf("Error, unknown expression!");
+					printf("Error, unknown expression at node %d!", node->node_id);
 			}
 
 		} else {
@@ -2169,7 +2249,7 @@ EvalData *subtree_walk(ast_node *node) {
 		}
 	} else if(node->type == EXPR) {
 		ast_node *child = node->children[0];
-		printf("%s \n", string_ver[child->type]);
+		// printf("%s \n", string_ver[child->type]);
 		int expr_type = expr_type_check(child);
 		switch(expr_type){
 			case 1: 
@@ -2198,27 +2278,27 @@ EvalData *subtree_walk(ast_node *node) {
 
 
 // taken from pre-order traversal
-void var_dec_tree_walk(ast_node* node){
-	printf("%s \n", string_ver[node->type]);
+// void var_dec_tree_walk(ast_node* node){
+// 	printf("%s \n", string_ver[node->type]);
 
-	if(node->type == ITZ) {
-		printf(" --- ITZ found! ---\n");
-		// int dec_type = subtree_walk(node);
-		// // // UNNEEDED: automaticaly entered to symtable // //check literal type of var_val child, call lit. type returner
-		// // // if child is expr
-		// switch(dec_type){
+// 	if(node->type == ITZ) {
+// 		printf(" --- ITZ found! ---\n");
+// 		// int dec_type = subtree_walk(node);
+// 		// // // UNNEEDED: automaticaly entered to symtable // //check literal type of var_val child, call lit. type returner
+// 		// // // if child is expr
+// 		// switch(dec_type){
 
-		// }
-			// call expr evaluator and get expr type
-			// switch case expr type
-			// call respective evaluators
+// 		// }
+// 			// call expr evaluator and get expr type
+// 			// switch case expr type
+// 			// call respective evaluators
 
-	}
+// 	}
 
-	for(int i = 0; i < node->numChildren; i++){
-		var_dec_tree_walk(node->children[i]);
-	}
-}
+// 	for(int i = 0; i < node->numChildren; i++){
+// 		var_dec_tree_walk(node->children[i]);
+// 	}
+// }
 
 
 
@@ -2227,9 +2307,13 @@ void interpret_walk(SymbolTable *table, ast_node *node) {
 	// printf("%s \n", string_ver[node->type]);
 	// check if print statement encountered, since output is (required) and evaluation may be performed
 	if(node->type == PRINT && node->children[0]->type == PRINT) {
-		/* // TODO: enclose this process in a do-while loop to handle multiple arities,
+		/* // TODO: enclose this process in a do-while loop to handle multiple arities, do not ealy return
 			use var_dec() ccheck for I_HAS_A as reference.
 		*/
+		// do{
+
+		// }while();
+
 		ast_node *child = node->children[1];
 		ast_node *print_op = child->children[0];
 		int print_op_type = print_op->type;			// print operand value type
@@ -2265,6 +2349,9 @@ void interpret_walk(SymbolTable *table, ast_node *node) {
 						printf("%s\n", table->entries[ident_num]->value.intVal ? "WIN" : "FAIL");
 						break;
 					/* // ? How to handle printing of uninitialized? */
+					case TYPE_NOOB:
+						printf("%s\n", "FAIL");
+						break;
 					// default to string to output
 					default:
 						printf("%s\n", table->entries[ident_num]->value.stringVal);
@@ -2275,7 +2362,7 @@ void interpret_walk(SymbolTable *table, ast_node *node) {
 				// call expr evaluator
 				EvalData *result = subtree_walk(print_op);		
 				switch(result->expr_source_type){
-					case 1:
+					case 0:
 						// from arithmetic OR comparison 
 						if(result->float_flag == 1){
 							printf("%f\n", result->eval_data.flt_Result);
@@ -2370,14 +2457,16 @@ void interpret_walk(SymbolTable *table, ast_node *node) {
 			default:	// some node that evaluate to a value
 				/* error then halt */
 		}
-
+		// Julianne: missing return statemet?
 		print_table(symTable);
 
 	} else if(node->type == EXPR){
 		if(node->children[0]->type == TYPECASTING){
 			typecast_evaluator(node->children[0]);
-		} 
+		}
+		// else other expession ()
 	}
+	
 	
 
 	for(int i = 0; i < node->numChildren; i++){
