@@ -117,6 +117,9 @@ void print_table(SymbolTable* table){
                 case TYPE_TYPE:
                     printf("%-3d | %-20s | %-10s | %-10s | %-30s\n", i, table->entries[i]->id, symType_strings[table->entries[i]->symType], varType_strings[table->entries[i]->varType], table->entries[i]->value.stringVal);        
                     break;
+				case TYPE_NOOB:
+                    printf("%-3d | %-20s | %-10s | %-10s | %-30s\n", i, table->entries[i]->id, symType_strings[table->entries[i]->symType], varType_strings[table->entries[i]->varType], table->entries[i]->value.stringVal);        
+                    break;
             }
         // } else if (table->entries[i]->symType == SYM_FUN){
                     // printf("%-3d | %-20s | %-10s | %-10s | %-30s", i, table->entries[i]->id, symType_strings[table->entries[i]->symType], "N/A", "N/A");        
@@ -435,24 +438,10 @@ ast_node* var_dec(){
 					}
 					literal_varDec_symTable_adder(caughtType, c1, c2, evalAssign);
 				}
-
-
-				// switch(c2->children[0]->type){
-				// 	case TOK_INTEGER:
-				// 	case TOK_FLOAT:
-				// 	case TOK_STRING:
-				// 	case TOK_BOOLEAN:
-				// 		EvalData *literal_value = createEvalData();
-				// 		// TODO: Fix value passing to function contra expr and literal
-				// 		// literal_varDec_symTable_adder(c2->children[0]->type, c1, c2);
-				// 		break;
-				// 	case EXPR:
-						
-				// 		break;
-				// 	default:
-				// }
 			} else {
-			
+				// no assignment, add to symTable as NOOB fo uninitialized
+				c1->children[0]->id_name;
+				addSymTableEntry(symTable, create_var_entry_no_type(c1->children[0]->id_name));
 			}
 		} else {
 			syntaxError("Expected identifier after I HAS A");
@@ -1558,7 +1547,7 @@ int expr_type_check(ast_node *node) {
 
 EvalData *subtree_walk(ast_node *node) {
 	// print_table(symTable);
-	printf("%s \n", string_ver[node->type]);
+	// printf("%s \n", string_ver[node->type]);
 	if(node->type == VAR_VAL) {
 		ast_node *child = node->children[0];
 		if(child->type == EXPR) {
@@ -1638,9 +1627,12 @@ void var_dec_tree_walk(ast_node* node){
 
 // called from root node, preorder traversal
 void interpret_walk(SymbolTable *table, ast_node *node) {
-	printf("%s \n", string_ver[node->type]);
+	// printf("%s \n", string_ver[node->type]);
 	// check if print statement encountered, since output is (required) and evaluation may be performed
 	if(node->type == PRINT && node->children[0]->type == PRINT) {
+		/* // TODO: enclose this process in a do-while loop to handle multiple arities,
+			use var_dec() ccheck for I_HAS_A as reference.
+		*/
 		ast_node *child = node->children[1];
 		ast_node *print_op = child->children[0];
 		int print_op_type = print_op->type;			// print operand value type
@@ -1675,30 +1667,27 @@ void interpret_walk(SymbolTable *table, ast_node *node) {
 					case TYPE_BOOL:
 						printf("%s\n", table->entries[ident_num]->value.intVal ? "WIN" : "FAIL");
 						break;
-					
+					/* // ? How to handle printing of uninitialized? */
 					// default to string to output
 					default:
 						printf("%s\n", table->entries[ident_num]->value.stringVal);
 				}
 				return;
-
-				// symTable->entries
-				// print return val
 			case EXPR:
 				// TODO: Make a branch w/ expr case outside of this print-if-branch to evaluate expressions not in a print statement
 				// call expr evaluator
-				EvalData *result = subtree_walk(print_op);		// TODO: might also need symbol table here to evaluate with var_idents
-
+				EvalData *result = subtree_walk(print_op);		
 				switch(result->expr_source_type){
 					case 1:
-						// from arithmetic
+						// from arithmetic OR comparison 
 						if(result->float_flag == 1){
 							printf("%f\n", result->eval_data.flt_Result);
 						} else if(result->float_flag == 0) {
 							printf("%d\n", result->eval_data.int_Result);
 						} // else
 						break; 
-						
+					// case 2:
+					// could be string
 				}
 				// print return val
 				return;
