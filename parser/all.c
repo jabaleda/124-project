@@ -112,7 +112,7 @@ void print_table(SymbolTable* table){
                     printf("%-3d | %-20s | %-10s | %-10s | %-30s\n", i, table->entries[i]->id, symType_strings[table->entries[i]->symType], varType_strings[table->entries[i]->varType], table->entries[i]->value.stringVal);        
                     break;
                 case TYPE_BOOL:
-                    printf("%-3d | %-20s | %-10s | %-10s | %-30s\n", i, table->entries[i]->id, symType_strings[table->entries[i]->symType], varType_strings[table->entries[i]->varType], table->entries[i]->value.intVal == 1 ? "True" : "False");        
+                    printf("%-3d | %-20s | %-10s | %-10s | %-30s\n", i, table->entries[i]->id, symType_strings[table->entries[i]->symType], varType_strings[table->entries[i]->varType], table->entries[i]->value.intVal == 1 ? "WIN" : "FAIL");        
                     break;
                 case TYPE_TYPE:
                     printf("%-3d | %-20s | %-10s | %-10s | %-30s\n", i, table->entries[i]->id, symType_strings[table->entries[i]->symType], varType_strings[table->entries[i]->varType], table->entries[i]->value.stringVal);        
@@ -251,6 +251,7 @@ SymbolTable* initSymbolTable(){
 int setVarEntryValInt(char* id, int val){
 	for(int i = 0; i < symTable->numEntries; i++){
 		if(strcmp(symTable->entries[i]->id, id) == 0){
+			symTable->entries[i]->varType = TYPE_INT;
 			symTable->entries[i]->value.intVal = val;
 		}
 	}
@@ -258,6 +259,7 @@ int setVarEntryValInt(char* id, int val){
 int setVarEntryValFloat(char* id, float val){
 	for(int i = 0; i < symTable->numEntries; i++){
 		if(strcmp(symTable->entries[i]->id, id) == 0){
+			symTable->entries[i]->varType = TYPE_FLOAT;
 			symTable->entries[i]->value.floatVal = val;
 		}
 	}
@@ -265,6 +267,7 @@ int setVarEntryValFloat(char* id, float val){
 int setVarEntryValString(char* id, char* val){
 	for(int i = 0; i < symTable->numEntries; i++){
 		if(strcmp(symTable->entries[i]->id, id) == 0){
+			symTable->entries[i]->varType = TYPE_STRING;
 			symTable->entries[i]->value.stringVal = strdup(val);
 		}
 	}
@@ -272,6 +275,7 @@ int setVarEntryValString(char* id, char* val){
 int setVarEntryValBool(char* id, int val){
 	for(int i = 0; i < symTable->numEntries; i++){
 		if(strcmp(symTable->entries[i]->id, id) == 0){
+			symTable->entries[i]->varType = TYPE_BOOL;
 			symTable->entries[i]->value.intVal = val;
 		}
 	}
@@ -279,6 +283,7 @@ int setVarEntryValBool(char* id, int val){
 int setVarEntryValType(char* id, char* val){
 	for(int i = 0; i < symTable->numEntries; i++){
 		if(strcmp(symTable->entries[i]->id, id) == 0){
+			symTable->entries[i]->varType = TYPE_TYPE;
 			symTable->entries[i]->value.stringVal = strdup(val);
 		}
 	}
@@ -360,7 +365,8 @@ void literal_varDec_symTable_adder(VarType type, ast_node *c1, ast_node *c2, Eva
 			addSymTableEntry(symTable, create_var_entry_string(c1->children[0]->id_name, result->eval_data.string_Result));
 			break;
 		case TOK_BOOLEAN:
-			if(strcmp(c2->children[0]->string_val, "WIN") == 0){
+			// if(strcmp(c2->children[0]->string_val, "WIN") == 0){
+			if(c2->children[0]->num_val == 1){
 				addSymTableEntry(symTable, create_var_entry_bool(c1->children[0]->id_name, 1));
 			} else {
 				// a FAIL
@@ -476,30 +482,36 @@ ast_node* var_val(){
 		case TOK_INTEGER:
 			s = createNode(INTEGER);
 			s->num_val = atoi((*cur)->lexeme);
+			symTable->entries[0]->varType = TYPE_INT;
 			setVarEntryValInt("IT", s->num_val);
 			addChild(n, s);
 			break;
 		case TOK_FLOAT:
 			s = createNode(FLOAT);
 			s->num_val = atof((*cur)->lexeme);
+			symTable->entries[0]->varType = TYPE_FLOAT;
 			setVarEntryValFloat("IT", s->num_val);
+			printf("AGHHHHHHHHH IT VALUE: %f\n", s->num_val);
 			addChild(n, s);
 			break;
 		case TOK_STRING:
 			s = createNode(STRING);
 			s->string_val = (*cur)->lexeme;
+			symTable->entries[0]->varType = TYPE_STRING;
 			setVarEntryValString("IT", s->string_val);
 			addChild(n, s);
 			break;
 		case TOK_BOOLEAN:
 			s = createNode(BOOLEAN);
-			s->string_val = (*cur)->lexeme;
+			s->num_val = strcmp((*cur)->lexeme, "WIN") == 0 ? 1 : 0;
+			symTable->entries[0]->varType = TYPE_BOOL;
 			setVarEntryValInt("IT", s->num_val);
 			addChild(n, s);
 			break;
 		case TOK_TYPE:
 			s = createNode(TYPE);
 			s->string_val = (*cur)->lexeme;
+			symTable->entries[0]->varType = TYPE_TYPE;
 			setVarEntryValString("IT", s->string_val);
 			addChild(n, s);
 			break;
@@ -1555,6 +1567,198 @@ int expr_type_check(ast_node *node) {
 	}
 }
 
+void typecast_evaluator(ast_node* typecast_node, EvalData *evaled){
+	ast_node *child0 = typecast_node->children[0];
+	if(child0->type == MAEK){	// MAEK syntax 
+		ast_node *target = typecast_node->children[1];		// get the var_val (ident) child of node
+		Entry *target_entry = NULL;				// symbol table entry to be modified
+		for(int i = 0; i < symTable->numEntries; i++){
+			if(strcmp(symTable->entries[i]->id, target->children[0]->id_name) == 0){
+				target_entry = symTable->entries[i];
+				break;	
+			}
+		}
+
+		if(target_entry == NULL){	
+			syntaxError("Undeclared variable in typecast.");
+		}
+
+		ast_node *newType = typecast_node->children[3]->children[0];	// get the type literal to convert into
+		if(strcmp(newType->string_val, "NUMBR") == 0){		// casting to int
+			switch(target_entry->varType){
+				case TYPE_INT:
+					printf("Casting NUMBR to NUMBR\n");
+					// do nothing, already a NUMBR (INT)
+					setVarEntryValInt("IT", target_entry->value.intVal);
+					break;
+				case TYPE_FLOAT:
+					printf("Casting NUMBAR to NUMBR\n");
+					// target_entry->varType = TYPE_INT;
+					printf("OG VALUE: %f\n",target_entry->value.floatVal);
+
+					// evaled->eval_data.int_Result = (int) target_entry->value.floatVal; 
+					setVarEntryValInt("IT", target_entry->value.floatVal);
+
+					break;
+				case TYPE_STRING:
+					{
+						printf("Casting YARN to NUMBR\n");
+						// create copy of string value without the quotes ""
+						char *str = strdup(target_entry->value.stringVal);
+						char *p = str;
+						p++;
+						p[strlen(p)-1] = '\0';
+						printf("newstr: %s\n", p);
+
+						// check if the current string value of target_entry can be cast to a int
+						if(isInteger(p) == 0){
+							syntaxError("Yarn value of %s cannot be cast into a NUMBR.\n");
+						}
+						// evaled->eval_data.int_Result = atoi(p);
+						setVarEntryValInt("IT", atoi(p));
+
+						// printf("new value: %d\n",target_entry->value.intVal);
+						break;
+					}
+				case TYPE_BOOL:
+					printf("Casting BOOL to NUMBR\n");
+					// evaled->eval_data.int_Result = target_entry->value.intVal;
+					setVarEntryValInt("IT", target_entry->value.intVal);
+
+					break;
+				default:
+					break;
+			}
+		} else if(strcmp(newType->string_val, "NUMBAR") == 0){	// casting to float
+			switch(target_entry->varType){
+				case TYPE_INT:
+					printf("Casting NUMBR to NUMBAR\n");
+					// evaled->eval_data.flt_Result = (float) target_entry->value.intVal;
+					setVarEntryValFloat("IT", (float) target_entry->value.intVal);
+					break;
+				case TYPE_FLOAT:
+					printf("Casting NUMBAR to NUMBAR\n");
+					setVarEntryValFloat("IT", target_entry->value.floatVal);
+					break;
+				case TYPE_STRING:
+					{
+						printf("Casting YARN to NUMBAR\n");
+						// create copy of string value without the quotes ""
+						char *str = strdup(target_entry->value.stringVal);
+						char *p = str;
+						p++;
+						p[strlen(p)-1] = '\0';
+						printf("newstr: %s\n", p);
+
+						// check if the current string value of target_entry can be cast to a number
+						if(isFloat(p) == 0){
+							syntaxError("Yarn value of %s cannot be cast into a NUMBAR.\n");
+						}
+						// evaled->eval_data.flt_Result = atof(p);
+						setVarEntryValFloat("IT", atof(p));
+						break;
+					}
+				case TYPE_BOOL:
+					printf("Casting BOOL to NUMBAR\n");
+					// evaled->eval_data.flt_Result = (float) target_entry->value.intVal;
+					setVarEntryValFloat("IT", (float) target_entry->value.intVal);
+					break;
+				default:
+					break;
+			}
+		} else if(strcmp(newType->string_val, "YARN") == 0) {	// cast to string
+			switch(target_entry->varType){
+				// for int to string and float to string:
+				// create buffer that can hold the length of the number via snprintf
+				// strdup value to target_entry->value.stringVal
+				case TYPE_INT:
+				{
+					printf("Casting NUMBR to YARN\n");
+					int len = snprintf(NULL, 0, "%d", target_entry->value.intVal);
+					char *result = malloc(sizeof(char) * (len + 1));
+					snprintf(result, len + 1, "%d", target_entry->value.intVal);
+					// evaled->eval_data.string_Result = strdup(result);
+					setVarEntryValString("IT", strdup(result));
+
+					printf("string casted: %s\n", result);
+				}
+					break;
+				case TYPE_FLOAT:
+				{
+					printf("Casting NUMBAR to YARN\n");
+					int len = snprintf(NULL, 0, "%.2f", target_entry->value.floatVal);
+					char *result = malloc(sizeof(char) * (len + 1));
+					snprintf(result, len + 1, "%.2f", target_entry->value.floatVal);
+					// evaled->eval_data.string_Result = strdup(result);
+					setVarEntryValString("IT", strdup(result));
+					printf("string casted: %s\n", result);
+				}
+					break;
+				case TYPE_STRING:
+					setVarEntryValString("IT", strdup(target_entry->value.stringVal));
+					break;
+				case TYPE_BOOL:
+					printf("Casting BOOL to YARN\n");
+					// evaled->eval_data.string_Result = target_entry->value.intVal == 1 ? "WIN" : "FAIL";
+					if(target_entry->value.intVal == 1){
+						setVarEntryValString("IT", "WIN");
+					} else {
+						setVarEntryValString("IT", "FAIL");
+					}
+					break;
+				default:
+					break;
+			}
+
+		} else if(strcmp(newType->string_val, "TROOF") == 0){	// bool cast
+			// since any value can be cast to troof, immediately change type of target_entry to BOOL
+			switch(target_entry->varType){
+				case TYPE_INT:
+					printf("Casting NUMBR to TROOF\n");
+					// evaled->eval_data.string_Result = target_entry->value.intVal == 0 ? 0 : 1;
+					if(target_entry->value.intVal == 0){
+						setVarEntryValBool("IT", 0);
+					} else {
+						setVarEntryValBool("IT", 1);
+					}
+					break;
+				case TYPE_FLOAT:
+					printf("Casting NUMBAR to TROOF\n");
+					// evaled->eval_data.string_Result = target_entry->value.floatVal == 0 ? 0 : 1;
+					if(target_entry->value.intVal == 0){
+						setVarEntryValBool("IT", 0);
+					} else {
+						setVarEntryValBool("IT", 1);
+					}
+					break;
+				case TYPE_STRING:
+					printf("Casting YARN to TROOF\n");
+					// if original string value is not empty string, assign 1 else 0
+					// evaled->eval_data.string_Result = strcmp(target_entry->value.stringVal, "") != 0 ? 1 : 0;
+					if(strcmp(target_entry->value.stringVal, "\"\"") != 0){
+						setVarEntryValBool("IT", 1);
+					} else {
+						setVarEntryValBool("IT", 0);
+					}
+					break;
+				case TYPE_BOOL:
+					setVarEntryValBool("IT", target_entry->value.intVal);
+					break;
+				default:
+					break;
+			}
+		} else {
+			/* Error: cannot cast variable to specified type */
+		}
+
+	} else {		// other syntax -> IS NOW A or R MAEK
+
+	}
+
+	print_table(symTable);
+	
+}
+
 
 EvalData *subtree_walk(ast_node *node) {
 	// print_table(symTable);
@@ -1636,6 +1840,8 @@ void var_dec_tree_walk(ast_node* node){
 	}
 }
 
+
+
 // called from root node, preorder traversal
 void interpret_walk(SymbolTable *table, ast_node *node) {
 	printf("%s \n", string_ver[node->type]);
@@ -1703,11 +1909,93 @@ void interpret_walk(SymbolTable *table, ast_node *node) {
 				// print return val
 				return;
 		}
+	} else if (node->type == ASSIGNMENT) {
+		ast_node *lhs = node->children[0]; // left hand-side of the assignment statement
+		// check if destination variable was declared in symbol table
+		Entry* lhs_entry = NULL;
+		for(int i = 0; i < symTable->numEntries; i++){
+			if(strcmp(symTable->entries[i]->id, lhs->children[0]->id_name) == 0){
+				lhs_entry = symTable->entries[i];
+				break;
+			}
+		}
+		
+		if(lhs_entry == NULL){			// if lhs undeclared
+			 /* error then halt */
+			 // for now syntaxError muna
+			syntaxError("Undeclared LHS variable in assignment.");
+		}
+		
+		// process rhs value and assign
+		ast_node *rhs = node->children[2];
+		switch(rhs->children[0]->type){
+			case IDENT:
+				// if RHS is also a variable, check if previously declared in table
+				Entry *rhs_entry = NULL;
+				for(int i = 0; i < symTable->numEntries; i++){
+					if(strcmp(symTable->entries[i]->id, rhs->children[0]->id_name) == 0){
+						rhs_entry = symTable->entries[i];
+						break;	
+					}
+				}
+				if(rhs_entry == NULL){		// if rhs undeclared
+					syntaxError("Undeclared RHS variable in assignment.");
+				}
+
+				/* get value of ident then assign	*/
+
+				break;
+			case INTEGER:
+				lhs_entry->varType = TYPE_INT;
+				lhs_entry->value.intVal = (int) rhs->children[0]->num_val;
+				break;
+			case FLOAT:
+				lhs_entry->varType = TYPE_FLOAT;
+				lhs_entry->value.floatVal = rhs->children[0]->num_val;
+				break;
+			case STRING:
+				lhs_entry->varType = TYPE_STRING;
+				lhs_entry->value.stringVal = rhs->children[0]->string_val;
+				break;
+			case BOOLEAN:
+				lhs_entry->varType = TYPE_BOOL;
+				lhs_entry->value.intVal = (int) rhs->children[0]->num_val;
+				break;
+			case EXPR:
+				/* get value of expr then assign; typecast if necessary */
+				EvalData *result = subtree_walk(rhs->children[0]);
+				switch(result->expr_source_type){
+					case 1:		// arith expr
+						if(result->float_flag == 1){
+							lhs_entry->varType = TYPE_FLOAT;
+							lhs_entry->value.floatVal = result->eval_data.flt_Result;
+						} else if(result->float_flag == 0) {
+							lhs_entry->varType = TYPE_INT;
+							lhs_entry->value.intVal = result->eval_data.int_Result;
+						} 
+						break; 
+					case 2: 	// boolean expr
+						break;
+					case 3:		// comparison expr
+						break;
+					case 4:		// concatenation expr
+						break;
+					case 5: 	// typecasting expr
+						/* Error: Cannot assign value */
+						break;
+						
+				}
+
+				break;
+			default:	// some node that evaluate to a value
+				/* error then halt */
+		}
+
+		print_table(symTable);
 	} 
-	// else if () {
+	// else if(){}
+	
 
-
-	// }
 	for(int i = 0; i < node->numChildren; i++){
 		interpret_walk(table, node->children[i]);
 	}
