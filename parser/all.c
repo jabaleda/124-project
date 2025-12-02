@@ -606,6 +606,11 @@ ast_node* print(){
 	n = createNode(PRINT);
 	addChild(n, createNode(PRINT));
 	addChildNoIncrement(n, var_val());
+	while(curType == TOK_PLUS){
+		// addChild(n, createNode(PLUS));
+		cur++;
+		addChildNoIncrement(n, var_val());
+	}
 	return n;
 }
 
@@ -1279,6 +1284,15 @@ int find_ident_num(SymbolTable *table, char *var_ident) {
 	}
 	return -1;
 }
+
+
+// ----------------------------------------------------------------------
+void semanticError(char* msg){
+	printf("Error: %s\n", msg);
+	// printf("%s	(line: %d)\n", msg, line);
+	exit(1);
+}
+
 // ---
 
 // Interpreting Business
@@ -2465,6 +2479,21 @@ void interpret_walk(SymbolTable *table, ast_node *node) {
 			typecast_evaluator(node->children[0]);
 		}
 		// else other expession ()
+	} else if(node->type == INPUT){
+		// get identifier
+		ast_node *ident = node->children[1]->children[0];
+		// check in table
+		int idx = find_ident_num(symTable, ident->id_name);
+		if(idx == -1){
+			semanticError("Undeclared destination value in GIMMEH");
+		}
+		// get input and assign, change type to string
+		char usrInput[1000];  
+		fgets(usrInput, 999, stdin);
+		symTable->entries[idx]->varType = TYPE_STRING;
+		symTable->entries[idx]->value.stringVal = strdup(usrInput);
+		// printf("INPUT: %s", symTable->entries[idx]->value.stringVal);
+		
 	}
 	
 	
