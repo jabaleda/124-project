@@ -858,20 +858,22 @@ ast_node* comparison(){
 			addChildNoIncrement(n, var_val());
 			if(curType == TOK_AN){
 				addChild(n, createNode(AN));
-				addChildNoIncrement(n, relational());
+				// addChildNoIncrement(n, relational());
 			} else {
 				syntaxError("Expected arg separator AN in binary comparison");
 			}
+			addChildNoIncrement(n, var_val());
 			break;
 		case TOK_DIFFRINT:
 			addChild(n, createNode(DIFFRINT));
 			addChildNoIncrement(n, var_val());
 			if(curType == TOK_AN){
 				addChild(n, createNode(AN));
-				addChildNoIncrement(n, relational());
+				// addChildNoIncrement(n, relational());
 			} else {
 				syntaxError("Expected arg separator AN in binary comparison");
 			}
+			addChildNoIncrement(n, var_val());
 			break;
 	}
 	return n;
@@ -1307,13 +1309,27 @@ void semanticError(char* msg){
 
 // 	until statement or expr or ... is encountered
 
+
+int expr_type_check(ast_node *node) {
+	int type = node->type;
+	switch(type){
+		case RELATIONAL:
+		case ARITHMETIC: return 1;
+		// case BOOLEAN: return 2;
+		case COMPARISON: return 2;
+		case CONCATENATION: return 4;
+		case TYPECASTING: return 5;
+		default: return 0;
+	}
+}
+
 /*
 If both operands evaluate to a NUMBR, the result of the operation is a NUMBR.
 If at least one operand is a NUMBAR, the result of the operation is a NUMBAR.
 
 */
 // SUM OF | DIFF OF | PRODUKT OF | QUOSHUNT OF | MOD OF | BIGGR OF | SMALLR OF
-void *arith_evaluator(ast_node *node, EvalData *answer) {
+void arith_evaluator(ast_node *node, EvalData *answer) {
 	// printf("%s \n", string_ver[node->type]);
 	// check first child for operator
 	ast_node *first_child = node->children[0];
@@ -1567,6 +1583,7 @@ void *arith_evaluator(ast_node *node, EvalData *answer) {
 				printf("!!! Error: Mod with float!");
 			}
 			break;
+		// RELATIONALS ------
 		case BIGGR_OF:
 			// check if NUMBR or NUMBAR
 			if(left_float_flag || right_float_flag == 1){
@@ -1627,29 +1644,49 @@ void *arith_evaluator(ast_node *node, EvalData *answer) {
 				answer->eval_data.int_Result = result_int;
 			}
 			break;
+		
+		// COMPAISONS : numeric ops, bool returns ------
+		case BOTH_SAEM:
+			// left == right
+			// no implicit convert
+			if(left_float_flag == 1 && right_float_flag == 1) {
+				answer->eval_data.int_Result = (left_fl == right_fl) ? 1 : 0;
+			} else if(left_float_flag == 0 && right_float_flag == 0) {
+				answer->eval_data.int_Result = (left_int == right_int) ? 1 : 0;
+			} else {
+				// fail,operand type mismatch
+				syntaxError("!!! Operand type mismatch in comparison");
+			}
+			break;
+		case DIFFRINT:
+			// left != right
+			if(left_float_flag == 1 && right_float_flag == 1) {
+				answer->eval_data.int_Result = (left_fl != right_fl) ? 1 : 0;
+			} else if(left_float_flag == 0 && right_float_flag == 0) {
+				answer->eval_data.int_Result = (left_int != right_int) ? 1 : 0;
+			} else {
+				// fail,operand type mismatch
+				syntaxError("!!! Operand type mismatch in comparison");
+			}
+			break;
 		default: 
 			printf("!!! Error. Unknown arithmetic operation in node: %d!\n", node->node_id);
 			break;
 	}
 
 	// pack evaluation, to return to print or somewhere
-	answer->expr_source_type = 0;		// from arithmetic expression -> int/float 
+	switch(answer->expr_source_type) {
+		case 0: 
+			answer->expr_source_type = 0;		// from arithmetic expression -> int/float 
+			break;
+		case 2:
+			answer->expr_source_type = 2;
+			break;
+	}
+	
 	answer->float_flag = (left_float_flag || right_float_flag) ? 1 : 0;
 }
 
-
-int expr_type_check(ast_node *node) {
-	int type = node->type;
-	switch(type){
-		case RELATIONAL:
-		case ARITHMETIC: return 1;
-		case BOOLEAN: return 2;
-		case COMPARISON: return 3;
-		case CONCATENATION: return 4;
-		case TYPECASTING: return 5;
-		default: return 0;
-	}
-}
 
 void typecast_evaluator(ast_node* typecast_node){
 	if(typecast_node->children[0]->type == MAEK){	// MAEK syntax 
@@ -2234,6 +2271,17 @@ void typecast_evaluator(ast_node* typecast_node){
 	
 }
 
+/* NOT <var_value>
+| BOTH OF <var_value> AN <var_value>
+| EITHER OF <var_value> AN <var_value> 
+| WON OF <var_value> AN <var_value>
+
+
+*/
+void bool_evaluator(ast_node *node, EvalData *answer) {
+
+}
+
 
 EvalData *subtree_walk(ast_node *node) {
 	// print_table(symTable);
@@ -2266,16 +2314,22 @@ EvalData *subtree_walk(ast_node *node) {
 		ast_node *child = node->children[0];
 		// printf("%s \n", string_ver[child->type]);
 		int expr_type = expr_type_check(child);
+		EvalData *evaled = createEvalData();
+		evaled->expr_source_type = expr_type;
 		switch(expr_type){
 			case 1: 
 				// arithmetic evaluator
-				EvalData *evaled = createEvalData();
+				
 				arith_evaluator(child, evaled);
 				return evaled;
 				// break;
 
-			// case BOOLEAN:
+			case 2:
+				// boolean evaluator
+				arith_evaluator(child, evaled);
+				return evaled;
 
+				//return
 			// case COMPARISON: 
 
 			// case CONCATENATION: 
@@ -2284,6 +2338,7 @@ EvalData *subtree_walk(ast_node *node) {
 
 			default:
 				printf("Error, unknown expression!");
+				break;
 		}
 	}
 }
@@ -2322,13 +2377,7 @@ void interpret_walk(SymbolTable *table, ast_node *node) {
 	// printf("%s \n", string_ver[node->type]);
 	// check if print statement encountered, since output is (required) and evaluation may be performed
 	if(node->type == PRINT && node->children[0]->type == PRINT) {
-		/* // TODO: enclose this process in a do-while loop to handle multiple arities, do not ealy return
-			use var_dec() ccheck for I_HAS_A as reference.
-		*/
-		// point to current node 
-		// int i = node->numChildren;
-		// ast_node *ptr = node->children[0];
-
+		// pint all children of PRINT
 		for(int i=1; i<node->numChildren; i++){
 			if(node->children[i]->type == VAR_VAL){
 				// do all below
@@ -2394,8 +2443,11 @@ void interpret_walk(SymbolTable *table, ast_node *node) {
 									printf("%d", result->eval_data.int_Result);
 								} // else
 								break; 
-							// case 2:
-							// could be string
+							case 2:
+								// from relational boolean
+								printf("%s", result->eval_data.int_Result ? "WIN" : "FAIL");
+								break;
+							// could be string from concat
 						}
 						// print return val
 						// return;
@@ -2403,17 +2455,9 @@ void interpret_walk(SymbolTable *table, ast_node *node) {
 				}
 			}
 		}
-
-		// do{
-			
-		// 	// move ptr
-		// 	i++;
-		// 	ptr = node->children[i];
-		// }while(ptr->type == VAR_VAL);
 		printf("\n");
 		return;
 
-		
 	} else if (node->type == ASSIGNMENT) {
 		ast_node *lhs = node->children[0]; // left hand-side of the assignment statement
 		// check if destination variable was declared in symbol table
@@ -2502,7 +2546,7 @@ void interpret_walk(SymbolTable *table, ast_node *node) {
 	} else if(node->type == EXPR){
 		if(node->children[0]->type == TYPECASTING){
 			typecast_evaluator(node->children[0]);
-		}
+		} 
 		// else other expession ()
 	} else if(node->type == INPUT){
 		// get identifier
