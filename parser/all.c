@@ -606,6 +606,12 @@ ast_node* print(){
 	n = createNode(PRINT);
 	addChild(n, createNode(PRINT));
 	addChildNoIncrement(n, var_val());
+	// cur++;
+	while(curType == PLUS) {
+		cur++;
+		addChildNoIncrement(n, var_val());
+	}
+	// addChildNoIncrement(n, var_val());
 	return n;
 }
 
@@ -2310,72 +2316,95 @@ void interpret_walk(SymbolTable *table, ast_node *node) {
 		/* // TODO: enclose this process in a do-while loop to handle multiple arities, do not ealy return
 			use var_dec() ccheck for I_HAS_A as reference.
 		*/
-		// do{
+		// point to current node 
+		// int i = node->numChildren;
+		// ast_node *ptr = node->children[0];
 
-		// }while();
-
-		ast_node *child = node->children[1];
-		ast_node *print_op = child->children[0];
-		int print_op_type = print_op->type;			// print operand value type
-		switch(print_op_type) {
-			case STRING:
-				// print string to terminal
-				// TODO: Remove quotations in printing
-				printf("%s\n", print_op->string_val);
-				return;		// to go to next child of PRINT's parent (PRINT's sibling)
-			case INTEGER:
-				printf("%d\n", (int)print_op->num_val);
-				return;
-			case FLOAT:
-				printf("%f\n", print_op->num_val);
-				return;
-			case BOOLEAN:
-				// print literal to terminal
-				printf("%s\n", print_op->bool_val ? "WIN" : "FAIL");
-				return;
-			case IDENT:
-				// check with symbol table
-				int ident_num = find_ident_num(table, print_op->id_name);
-				// check type before print
-				VarType val_type = table->entries[ident_num]->varType;
-				switch(val_type) {
-					case TYPE_INT:
-						printf("%d\n", table->entries[ident_num]->value.intVal);
+		for(int i=1; i<node->numChildren; i++){
+			if(node->children[i]->type == VAR_VAL){
+				// do all below
+				ast_node *child = node->children[i];
+				ast_node *print_op = child->children[0];
+				int print_op_type = print_op->type;			// print operand value type
+				switch(print_op_type) {
+					case STRING:
+						// print string to terminal
+						// TODO: Remove quotations in printing
+						printf("%s", print_op->string_val);
 						break;
-					case TYPE_FLOAT:
-						printf("%f\n", table->entries[ident_num]->value.floatVal);
+						// return;		// to go to next child of PRINT's parent (PRINT's sibling)
+					case INTEGER:
+						printf("%d", (int)print_op->num_val);
 						break;
-					case TYPE_BOOL:
-						printf("%s\n", table->entries[ident_num]->value.intVal ? "WIN" : "FAIL");
+						// return;
+					case FLOAT:
+						printf("%f", print_op->num_val);
 						break;
-					/* // ? How to handle printing of uninitialized? */
-					case TYPE_NOOB:
-						printf("%s\n", "FAIL");
+						// return;
+					case BOOLEAN:
+						// print literal to terminal
+						printf("%s", print_op->bool_val ? "WIN" : "FAIL");
 						break;
-					// default to string to output
-					default:
-						printf("%s\n", table->entries[ident_num]->value.stringVal);
+						// return;
+					case IDENT:
+						// check with symbol table
+						int ident_num = find_ident_num(table, print_op->id_name);
+						// check type before print
+						VarType val_type = table->entries[ident_num]->varType;
+						switch(val_type) {
+							case TYPE_INT:
+								printf("%d", table->entries[ident_num]->value.intVal);
+								break;
+							case TYPE_FLOAT:
+								printf("%f", table->entries[ident_num]->value.floatVal);
+								break;
+							case TYPE_BOOL:
+								printf("%s", table->entries[ident_num]->value.intVal ? "WIN" : "FAIL");
+								break;
+							/* // ? How to handle printing of uninitialized? */
+							case TYPE_NOOB:
+								printf("%s", "FAIL");
+								break;
+							// default to string to output
+							default:
+								printf("%s", table->entries[ident_num]->value.stringVal);
+								break;
+						}
+						break;
+						// return;
+					case EXPR:
+						// TODO: Make a branch w/ expr case outside of this print-if-branch to evaluate expressions not in a print statement
+						// call expr evaluator
+						EvalData *result = subtree_walk(print_op);		
+						switch(result->expr_source_type){
+							case 0:
+								// from arithmetic OR comparison 
+								if(result->float_flag == 1){
+									printf("%f", result->eval_data.flt_Result);
+								} else if(result->float_flag == 0) {
+									printf("%d", result->eval_data.int_Result);
+								} // else
+								break; 
+							// case 2:
+							// could be string
+						}
+						// print return val
+						// return;
+						break;
 				}
-				return;
-			case EXPR:
-				// TODO: Make a branch w/ expr case outside of this print-if-branch to evaluate expressions not in a print statement
-				// call expr evaluator
-				EvalData *result = subtree_walk(print_op);		
-				switch(result->expr_source_type){
-					case 0:
-						// from arithmetic OR comparison 
-						if(result->float_flag == 1){
-							printf("%f\n", result->eval_data.flt_Result);
-						} else if(result->float_flag == 0) {
-							printf("%d\n", result->eval_data.int_Result);
-						} // else
-						break; 
-					// case 2:
-					// could be string
-				}
-				// print return val
-				return;
+			}
 		}
+
+		// do{
+			
+		// 	// move ptr
+		// 	i++;
+		// 	ptr = node->children[i];
+		// }while(ptr->type == VAR_VAL);
+		printf("\n");
+		return;
+
+		
 	} else if (node->type == ASSIGNMENT) {
 		ast_node *lhs = node->children[0]; // left hand-side of the assignment statement
 		// check if destination variable was declared in symbol table
@@ -2459,6 +2488,7 @@ void interpret_walk(SymbolTable *table, ast_node *node) {
 		}
 		// Julianne: missing return statemet?
 		print_table(symTable);
+		return;
 
 	} else if(node->type == EXPR){
 		if(node->children[0]->type == TYPECASTING){

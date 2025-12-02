@@ -910,7 +910,14 @@ TokenList* tokenize(LexemeList* list){
         } else if(isFloat(list->lexemes[i]->value)){
             newToken = createToken(TOK_FLOAT, list->lexemes[i]->value, list->lexemes[i]->line); 
         } else if(isString(list->lexemes[i]->value)){
-            newToken = createToken(TOK_STRING, list->lexemes[i]->value, list->lexemes[i]->line);
+            // remove quotations 
+            int len = strlen(list->lexemes[i]->value);
+            char str[len]; strncpy(str, list->lexemes[i]->value, len);
+            char newStr[len-2+1];
+            char *ptrStart = &str[1];
+            strncpy(newStr, ptrStart, len-2);
+            newStr[len-2] = '\0';
+            newToken = createToken(TOK_STRING, newStr, list->lexemes[i]->line);
         } else if(strcmp(list->lexemes[i]->value, "WIN") == 0){
             newToken = createToken(TOK_BOOLEAN, "WIN", list->lexemes[i]->line); 
         } else if(strcmp(list->lexemes[i]->value, "FAIL") == 0){
