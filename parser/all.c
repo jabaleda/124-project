@@ -1567,7 +1567,7 @@ int expr_type_check(ast_node *node) {
 	}
 }
 
-void typecast_evaluator(ast_node* typecast_node, EvalData *evaled){
+void typecast_evaluator(ast_node* typecast_node){
 	ast_node *child0 = typecast_node->children[0];
 	if(child0->type == MAEK){	// MAEK syntax 
 		ast_node *target = typecast_node->children[1];		// get the var_val (ident) child of node
@@ -1651,7 +1651,7 @@ void typecast_evaluator(ast_node* typecast_node, EvalData *evaled){
 						printf("newstr: %s\n", p);
 
 						// check if the current string value of target_entry can be cast to a number
-						if(isFloat(p) == 0){
+						if(isInteger(p) == 0 && isFloat(p) == 0){
 							syntaxError("Yarn value of %s cannot be cast into a NUMBAR.\n");
 						}
 						// evaled->eval_data.flt_Result = atof(p);
@@ -1992,8 +1992,12 @@ void interpret_walk(SymbolTable *table, ast_node *node) {
 		}
 
 		print_table(symTable);
-	} 
-	// else if(){}
+		
+	} else if(node->type == EXPR){
+		if(node->children[0]->type == TYPECASTING){
+			typecast_evaluator(node->children[0]);
+		} 
+	}
 	
 
 	for(int i = 0; i < node->numChildren; i++){
