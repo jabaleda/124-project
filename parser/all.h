@@ -456,8 +456,8 @@ LexemeList* lex(/*FILE* fp*/) {
     int size = 0;
 
     // ? vary filename as needed. hardcoded file naming munaaa d2
-    char *cwd = "C:/Users/Julianne/Documents/25-26/CMSC-124/lolcode-testcases-main/lolcode-testcases-main/project-testcases-fixed/01_variables.lol";
-    // char *cwd = "sample.lol";
+    // char *cwd = "C:/Users/Julianne/Documents/25-26/CMSC-124/lolcode-testcases-main/lolcode-testcases-main/project-testcases-fixed/01_variables.lol";
+    char *cwd = "sample.lol";
 
     printf("File path: %s\n", cwd);
 
