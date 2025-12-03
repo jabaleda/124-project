@@ -1661,7 +1661,7 @@ void arith_evaluator(ast_node *node, EvalData *answer) {
 				answer->eval_data.int_Result = (left_int == right_int) ? 1 : 0;
 			} else {
 				// fail,operand type mismatch
-				syntaxError("!!! Operand type mismatch in comparison");
+				semanticError("!!! Operand type mismatch in comparison");
 			}
 			break;
 		case DIFFRINT:
@@ -1672,7 +1672,7 @@ void arith_evaluator(ast_node *node, EvalData *answer) {
 				answer->eval_data.int_Result = (left_int != right_int) ? 1 : 0;
 			} else {
 				// fail,operand type mismatch
-				syntaxError("!!! Operand type mismatch in comparison");
+				semanticError("!!! Operand type mismatch in comparison");
 			}
 			break;
 		default: 
@@ -1705,7 +1705,7 @@ void typecast_evaluator(ast_node* typecast_node){
 		}
 
 		if(target_entry == NULL){	
-			syntaxError("Undeclared variable in typecast.");
+			semanticError("Undeclared variable in typecast.");
 		}
 
 		ast_node *newType = typecast_node->children[3]->children[0];	// get the type literal to convert into
@@ -1739,7 +1739,7 @@ void typecast_evaluator(ast_node* typecast_node){
 
 						// check if the current string value of target_entry can be cast to a int
 						if(isInteger(p) == 0 && isFloat(p) == 0){
-							syntaxError("Yarn value of %s cannot be cast into a NUMBR.\n");
+							semanticError("Yarn value of %s cannot be cast into a NUMBR.\n");
 						}
 						// evaled->eval_data.int_Result = atoi(p);
 						setVarEntryValInt("IT", atoi(p));
@@ -1779,7 +1779,7 @@ void typecast_evaluator(ast_node* typecast_node){
 
 						// check if the current string value of target_entry can be cast to a number
 						if(isInteger(p) == 0 && isFloat(p) == 0){
-							syntaxError("Yarn value of %s cannot be cast into a NUMBAR.\n");
+							semanticError("Yarn value of %s cannot be cast into a NUMBAR.\n");
 						}
 						// evaled->eval_data.flt_Result = atof(p);
 						setVarEntryValFloat("IT", atof(p));
@@ -1889,7 +1889,7 @@ void typecast_evaluator(ast_node* typecast_node){
 		}
 
 		if(target_entry == NULL){	
-			syntaxError("Undeclared variable in typecast.");
+			semanticError("Undeclared variable in typecast.");
 		}
 
 		ast_node *newType = typecast_node->children[2]->children[0];	// get the type literal to convert into
@@ -1922,7 +1922,7 @@ void typecast_evaluator(ast_node* typecast_node){
 
 						// check if the current string value of target_entry can be cast to a int
 						if(isInteger(p) == 0 && isFloat(p) == 0){
-							syntaxError("Yarn value of %s cannot be cast into a NUMBR.\n");
+							semanticError("Yarn value of %s cannot be cast into a NUMBR.\n");
 						}
 
 						setVarEntryValInt(target_entry->id, atoi(p));
@@ -1967,7 +1967,7 @@ void typecast_evaluator(ast_node* typecast_node){
 
 						// check if the current string value of target_entry can be cast to a number
 						if(isInteger(p) == 0 && isFloat(p) == 0){
-							syntaxError("Yarn value of %s cannot be cast into a NUMBAR.\n");
+							semanticError("Yarn value of %s cannot be cast into a NUMBAR.\n");
 						}
 						setVarEntryValFloat(target_entry->id, atof(p));
 						// evaled->eval_data.flt_Result = atof(p);
@@ -2083,11 +2083,11 @@ void typecast_evaluator(ast_node* typecast_node){
 		}
 
 		if(target_entry == NULL){	
-			syntaxError("Undeclared variable in typecast.");
+			semanticError("Undeclared variable in typecast.");
 		}
 
 		if(strcmp(target_entry->id, typecast_node->children[3]->children[0]->id_name) != 0){
-			syntaxError("Expected same variable in recast.");
+			semanticError("Expected same variable in recast.");
 		}
 
 		ast_node *newType = typecast_node->children[4]->children[0];	// get the type literal to convert into
@@ -2120,7 +2120,7 @@ void typecast_evaluator(ast_node* typecast_node){
 
 						// check if the current string value of target_entry can be cast to a int
 						if(isInteger(p) == 0 && isFloat(p) == 0){
-							syntaxError("Yarn value of %s cannot be cast into a NUMBR.\n");
+							semanticError("Yarn value of %s cannot be cast into a NUMBR.\n");
 						}
 
 						setVarEntryValInt(target_entry->id, atoi(p));
@@ -2165,7 +2165,7 @@ void typecast_evaluator(ast_node* typecast_node){
 
 						// check if the current string value of target_entry can be cast to a number
 						if(isInteger(p) == 0 && isFloat(p) == 0){
-							syntaxError("Yarn value of %s cannot be cast into a NUMBAR.\n");
+							semanticError("Yarn value of %s cannot be cast into a NUMBAR.\n");
 						}
 						setVarEntryValFloat(target_entry->id, atof(p));
 						// evaled->eval_data.flt_Result = atof(p);
@@ -2511,8 +2511,8 @@ void interpret_walk(SymbolTable *table, ast_node *node, GtkWidget *out_area, Gtk
 		
 		if(lhs_entry == NULL){			// if lhs undeclared
 			 /* error then halt */
-			 // for now syntaxError muna
-			syntaxError("Undeclared LHS variable in assignment.");
+			 // for now semanticError muna
+			semanticError("Undeclared LHS variable in assignment.");
 		}
 		
 		// process rhs value and assign
@@ -2528,7 +2528,7 @@ void interpret_walk(SymbolTable *table, ast_node *node, GtkWidget *out_area, Gtk
 					}
 				}
 				if(rhs_entry == NULL){		// if rhs undeclared
-					syntaxError("Undeclared RHS variable in assignment.");
+					semanticError("Undeclared RHS variable in assignment.");
 				}
 
 				/* get value of ident then assign	*/
