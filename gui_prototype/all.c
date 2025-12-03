@@ -1665,3 +1665,8 @@ int execute_code(char *file_path, GtkWidget *out_area, GtkTextBuffer *out_buffer
 	interpret_walk(symTable, root, out_area, out_buffer);
 	// Julianne
 }	
+
+
+void new(){
+	
+}
