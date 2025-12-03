@@ -160,7 +160,7 @@ static void on_bind_symbol_value(GtkListItemFactory *factory, GtkListItem *item,
 
 static void click_exec(GtkButton *button, gpointer data){
     GtkTextBuffer *buff = gtk_text_view_get_buffer(GTK_TEXT_VIEW(terminal_view));
-    gtk_text_buffer_insert_at_cursor(buff, "Executing...\n", -1);
+    gtk_text_buffer_insert_at_cursor(buff, "\nExecuting...\n", -1);
     // gtk_text_buffer_insert_at_cursor(buff, file_pathname, -1);
     execute_code(file_pathname, terminal_view, buff);
 }

@@ -2620,7 +2620,8 @@ void interpret_walk(SymbolTable *table, ast_node *node, GtkWidget *out_area, Gtk
 	}
 	
 	
-
+	print_table(symTable);
+	
 	for(int i = 0; i < node->numChildren; i++){
 		// interpret_walk(table, node->children[i]);
 		interpret_walk(table, node->children[i], out_area, out_buffer);
