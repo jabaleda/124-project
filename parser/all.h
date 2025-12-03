@@ -69,8 +69,10 @@ typedef enum{
 	TOK_HOW_IZ_I,
 
 	//
-	TOK_IF_U_SAY_SO
+	TOK_IF_U_SAY_SO,
 
+    TOK_PLUS,       // '+' char
+    TOK_BREAK
 } TokenType;
 
 
@@ -205,6 +207,9 @@ typedef enum{
 	//
 	IF_U_SAY_SO,
 
+    PLUS,
+    BREAK,
+
 	// Non-terminals
 	PROG,
 	VAR_DEC,
@@ -307,6 +312,9 @@ char* string_ver[] = {
 	"HOW_IZ_I",
 
 	"IF_U_SAY_SO",
+
+    "PLUS",
+    "BREAK",
 
 	"PROG",
 	"VAR_DEC",
@@ -428,7 +436,7 @@ LexemeList* lex(/*FILE* fp*/) {
     // // File reading
     // FILE *fileptr;
     // fileptr = fopen("test.lol", "r");
-    // // file contents
+    // // file 
     // char storage[100];
     // // ? fgets vs fread?
     // // fgets(storage, 100, fileptr);   // reads one line
@@ -448,8 +456,9 @@ LexemeList* lex(/*FILE* fp*/) {
     int size = 0;
 
     // ? vary filename as needed. hardcoded file naming munaaa d2
-    // char *cwd = "C:/Users/Julianne/Documents/25-26/CMSC-124/project/test.lol";
-    char *cwd = "sample.lol";
+    char *cwd = "C:/Users/Julianne/Documents/25-26/CMSC-124/lolcode-testcases-main/lolcode-testcases-main/project-testcases-fixed/01_variables.lol";
+    //char *cwd = "C:/Users/Julianne/Documents/25-26/CMSC-124/lolcode-testcases-main/lolcode-testcases-main/project-testcases-fixed/06_comparison.lol";
+    // char *cwd = "sample.lol";
 
     printf("File path: %s\n", cwd);
 
@@ -484,7 +493,8 @@ LexemeList* lex(/*FILE* fp*/) {
     // * ----- Lexeme Buildeing -----
     int iter = 0, lines_read = 1;
     int chars_read;
-    char *start = lines_read_buffer;
+    char *substrword;
+    char *start_of_line = lines_read_buffer;
     char *current_char = lines_read_buffer;
     char *lexeme_end = lines_read_buffer;
 
@@ -523,16 +533,80 @@ LexemeList* lex(/*FILE* fp*/) {
             strncpy(substr, current_char, chars_read);
             substr[chars_read] = '\0'; // null-terminate the substring
 
+            substrword = substr;
             // check if keyword for comment -> move ptr lexeme_end to line end, increment chars read
             if(strcmp(substr, "BTW") == 0) {
                 while(*lexeme_end != '\n' && *lexeme_end != '\0') {
                     lexeme_end++;
                     chars_read++;
                 }
-                // also consume \n
-                lexeme_end++;
-                chars_read++;
-                lines_read++;   // increment since \n is consumed
+                // check if current char is same as start of line. T -> consume \n; else -> do not consume \n, inline comment
+                if(current_char == start_of_line) {
+                    // DO NOT CONSUME \n for inline comments
+                    lexeme_end++;
+                    chars_read++;
+                    lines_read++;   // increment since \n is consumed, to keep line numbers consistent
+                    // move line start to new line
+                    start_of_line = lexeme_end;
+                }
+                
+            } else if(strcmp(substr, "OBTW") == 0) {
+                // toggle multiline comment flag -> 1, keep reading but not recording until flag is reset by T
+                // make sure obtw is found at start of line, else throw error and exits
+                if(current_char != start_of_line){
+                    printf("Error: Comment at line %d is not allowed.", lines_read);
+                    exit(-1);
+                } else {
+                    int temp_counter = 0;
+                    while(1){
+                        temp_counter = 0;
+                        while(*lexeme_end != 'T' && *lexeme_end != '\n' && *lexeme_end != '\0') {
+                            lexeme_end++;
+                            chars_read++;
+                        }
+                        if(*lexeme_end == '\n'){
+                            lines_read++;
+                            lexeme_end++;
+                            chars_read++;
+                            current_char = lexeme_end;
+                            // move line start to new line
+                            start_of_line = lexeme_end;
+                        }
+
+                        char *temp = lexeme_end;
+                        // check if TLDR appears
+                        while(*temp != ' ' && *temp != '\n' && *temp != '\0') {
+                            temp++;
+                            temp_counter++;
+                        }
+                        if(temp_counter == 4){
+                            char temp_str[temp_counter+1];
+                            strncpy(temp_str, lexeme_end, temp_counter);
+                            temp_str[temp_counter] = '\0';
+                            
+                            if(strcmp(temp_str, "TLDR") == 0){
+                                lexeme_end = temp;
+                                if(*lexeme_end == '\n'){
+                                    lexeme_end++;
+                                    lines_read++;
+                                    chars_read+=temp_counter;
+                                    current_char = lexeme_end;
+                                    // move line start to new line
+                                    start_of_line = lexeme_end;
+                                    break;
+                                } else {
+                                    printf("Error: Comment at line %d is not allowed.", lines_read);
+                                    exit(-1);
+                                }
+                                
+                            }
+                        }
+                    }
+                }
+                
+                
+                
+
             } else {
                 // // else add to lexeme list
                 printf("Alphabetic/Digit/AlphaNum lexeme: %s\n", substr);
@@ -565,6 +639,7 @@ LexemeList* lex(/*FILE* fp*/) {
                 char substr[chars_read+1];
                 strncpy(substr, current_char, chars_read);
                 substr[chars_read] = '\0'; // null-terminate the substring
+                
                 printf("Signed digit lexeme: %s\n", substr);
                 // add to lexeme list
                 // create lexeme and add to list
@@ -611,20 +686,58 @@ LexemeList* lex(/*FILE* fp*/) {
             // printf("Chars read this turn: %d\n", chars_read);
             continue;
         }
+
+        if(*current_char == '+') {
+            // '+' char for concatenating in VISIBLE statements
+            lexeme_end++;
+            chars_read++;
+            // get substr
+            char substr[2] = "+";
+            substr[1] = '\0';
+            printf("Print concat lexeme: %s\n", substr);
+            Lexeme *newLex = createLexeme(substr, lines_read);
+            addLexemeToList(lexemeList, newLex);
+            // add to lexeme list
+            current_char = lexeme_end;
+            // incremement iter + chars read in this loop turn
+            iter += chars_read;
+            // printf("Chars read this turn: %d\n", chars_read);
+            continue;
+        }
             
         // check if '\\' backslash
         if(*current_char == '\n') {
             // newline character
             lexeme_end++;
             chars_read++;
+            // // ! TODO: check prev. substr if KTHNXBYE
+            // if(strcmp(lexeme_end, "KTHXBYE") == 0) {
+            //     // set iter to len to terminate loop after this turn
+            //     iter = len;
+            // }
+
             // get substr
-            char substr[2] = "\n";
-            substr[2] = '\0';
-            printf("Newline lexeme: %s\n", substr);
+            char substr1[2] = "\n";
+            substr1[1] = '\0';
+            printf("Newline lexeme: %s\n", substr1);
+            Lexeme *newLex = createLexeme(substr1, lines_read);
+            addLexemeToList(lexemeList, newLex);
+
+            // ! TODO: check prev. substr if KTHNXBYE
+            if(strcmp(lexeme_end, "KTHXBYE") == 0) {
+                // set iter to len to terminate loop after this turn
+                iter = len;
+                Lexeme *newLex = createLexeme("KTHXBYE", lines_read);
+                addLexemeToList(lexemeList, newLex);
+                lines_read++;
+            }
+
             // increment lines read count for every newline encountered
             lines_read++;
             // add to lexeme list
             current_char = lexeme_end;
+            // move line start to new line
+            start_of_line = lexeme_end;
             // incremement iter + chars read in this loop turn
             iter += chars_read;
             // printf("Chars read this turn: %d\n", chars_read);
@@ -636,7 +749,7 @@ LexemeList* lex(/*FILE* fp*/) {
     } // while end
 
 
-    printLexemeList(lexemeList);
+    // printLexemeList(lexemeList);
 
     // tokenize(lexemeList);
 
@@ -682,7 +795,7 @@ TokenList* createTokenList(){
 
 int addToken(TokenList* list, Token* newToken){
     Token **temp = NULL;
-    temp = realloc(list->tokens, sizeof(Token*) * list->numTokens + 1);
+    temp = realloc(list->tokens, sizeof(Token*) * (list->numTokens + 1));
     if(temp != NULL){
         list->tokens = temp;
         list->tokens[list->numTokens] = newToken;
@@ -808,7 +921,14 @@ TokenList* tokenize(LexemeList* list){
         } else if(isFloat(list->lexemes[i]->value)){
             newToken = createToken(TOK_FLOAT, list->lexemes[i]->value, list->lexemes[i]->line); 
         } else if(isString(list->lexemes[i]->value)){
-            newToken = createToken(TOK_STRING, list->lexemes[i]->value, list->lexemes[i]->line);
+            // remove quotations 
+            int len = strlen(list->lexemes[i]->value);
+            char str[len]; strncpy(str, list->lexemes[i]->value, len);
+            char newStr[len-2+1];
+            char *ptrStart = &str[1];
+            strncpy(newStr, ptrStart, len-2);
+            newStr[len-2] = '\0';
+            newToken = createToken(TOK_STRING, newStr, list->lexemes[i]->line);
         } else if(strcmp(list->lexemes[i]->value, "WIN") == 0){
             newToken = createToken(TOK_BOOLEAN, "WIN", list->lexemes[i]->line); 
         } else if(strcmp(list->lexemes[i]->value, "FAIL") == 0){
@@ -822,6 +942,10 @@ TokenList* tokenize(LexemeList* list){
             newToken = createToken(TOK_TYPE, "YARN", list->lexemes[i]->line);
         } else if(strcmp(list->lexemes[i]->value, "TROOF") == 0){
             newToken = createToken(TOK_TYPE, "TROOF", list->lexemes[i]->line);
+        } else if(strcmp(list->lexemes[i]->value, "+\0") == 0) {   // newline
+            newToken = createToken(TOK_PLUS, "+", list->lexemes[i]->line);
+        } else if(strcmp(list->lexemes[i]->value, "\n\0") == 0) {   // newline
+            newToken = createToken(TOK_BREAK, "\\n", list->lexemes[i]->line);
         } else {
             // Check if keyword
             int type = isKeyword(list, &i);
@@ -852,13 +976,14 @@ typedef struct ast_node{
 		float num_val; // for numeric value ng literal?
 		char* id_name; 	// for ident
 		char* string_val;	// for string literal
+        int bool_val;   // for boolean literal
         struct ast_node** children; // for non-terminal's/root child nodes
 	};
 	int numChildren;
 } ast_node;
 
 // states forward dec
-ast_node* program();
+ast_node* program(TokenList* tokenList, int numTokens);
 ast_node* stmt();
 ast_node* var_val();
 ast_node* var_dec();
@@ -965,3 +1090,106 @@ void print_ast_root_f(const ast_node *root, FILE *out) {
         print_ast_f(root->children[i], "", i == root->numChildren - 1, out);
     }
 }
+
+
+/*Semantic stuff*/
+
+typedef enum{
+    SYM_VAR,
+    SYM_FUN,
+    SYM_PARAM
+}  SymbolType;
+
+char* symType_strings[] = {
+    "Variable",
+    "Function",
+    "Parameter"
+};
+
+/* Data type of variable identifier*/
+typedef enum{
+    TYPE_INT,
+    TYPE_FLOAT,
+    TYPE_STRING,
+    TYPE_BOOL,
+    TYPE_TYPE,
+    TYPE_NOOB   // for uninitialized
+} VarType;
+
+char* varType_strings[] = {
+    "Integer",
+    "Float",
+    "String",
+    "Boolean",
+    "Type",
+    "Noob"
+};
+
+typedef enum{
+    GLOBAL_SCOPE,
+    LOCAL_SCOPE
+} SymbolScope;
+
+typedef struct Entry{
+    
+    // int line;
+    char* id;                   // string identifier/name
+    SymbolType symType;            // is the symbol a function or var id
+    VarType varType;
+    // SymbolScope scope;
+    union {                     // value of var symbols
+        int intVal;
+        float floatVal;
+        char* stringVal;
+    } value;
+    // struct table_entry *prev;
+    // struct table_entry *next;
+
+} Entry;
+
+typedef struct SymbolTable{
+    int numEntries;
+    Entry** entries;
+} SymbolTable;
+
+
+// * ----------
+union Data {
+    int int_Result;
+    float flt_Result;
+    char *string_Result;
+    // int bool_Result;
+};
+
+// 0 - arith, comparison -> int or float
+// 1 - concat -> string
+// 2 - boolean
+// Data type used to pass around result of evaluated expressions
+typedef struct {
+    int expr_source_type;
+    int float_flag;
+    union Data eval_data;
+} EvalData;
+
+EvalData *createEvalData();
+EvalData *subtree_walk(ast_node *node);
+
+// * ----------
+
+
+void print_table(SymbolTable* table);
+Entry* create_var_entry_int(char *id, int val);
+Entry* create_var_entry_float(char *id, float val);
+Entry* create_var_entry_string(char *id, char *val);
+Entry* create_var_entry_bool(char *id, int val);
+Entry* create_var_entry_type(char *id, char *val);
+Entry* create_var_entry_no_type(char *id);
+Entry* create_function_entry(char *id);
+Entry* create_param_entry(char *id);
+int setVarEntryValInt(char* id, int val);
+int setVarEntryValFloat(char* id, float val);
+int setVarEntryValString(char* id, char* val);
+int setVarEntryValBool(char* id, int val);
+int setVarEntryValType(char* id, char* val);
+void addSymTableEntry(SymbolTable* table, Entry* e);
+SymbolTable* initSymbolTable();
