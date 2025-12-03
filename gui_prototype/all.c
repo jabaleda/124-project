@@ -2,7 +2,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+
 #include "all.h"
+
+#ifndef GTK
+#define GTK
+#include <gtk/gtk.h>
+#endif
 
 
 #define curType		(*cur)->type
@@ -2388,19 +2394,31 @@ void interpret_walk(SymbolTable *table, ast_node *node) {
 						// print string to terminal
 						// TODO: Remove quotations in printing
 						printf("%s", print_op->string_val);
+						gtk_text_buffer_insert_at_cursor(out_buffer, "\n", -1);
+						gtk_text_buffer_insert_at_cursor(out_buffer, print_op->string_val, -1);
 						break;
 						// return;		// to go to next child of PRINT's parent (PRINT's sibling)
 					case INTEGER:
 						printf("%d", (int)print_op->num_val);
+						char int_str[20];
+						sprintf(int_str, "%d", (int)print_op->num_val);
+						gtk_text_buffer_insert_at_cursor(out_buffer, "\n", -1);
+						gtk_text_buffer_insert_at_cursor(out_buffer, int_str, -1);
 						break;
 						// return;
 					case FLOAT:
 						printf("%f", print_op->num_val);
+						char flt_str[20];
+						sprintf(flt_str, "%d", (int)print_op->num_val);
+						gtk_text_buffer_insert_at_cursor(out_buffer, "\n", -1);
+						gtk_text_buffer_insert_at_cursor(out_buffer, flt_str, -1);
 						break;
 						// return;
 					case BOOLEAN:
 						// print literal to terminal
 						printf("%s", print_op->bool_val ? "WIN" : "FAIL");
+						gtk_text_buffer_insert_at_cursor(out_buffer, "\n", -1);
+						gtk_text_buffer_insert_at_cursor(out_buffer, print_op->num_val == 1 ? "WIN" : "FAIL", -1);
 						break;
 						// return;
 					case IDENT:
@@ -2411,12 +2429,22 @@ void interpret_walk(SymbolTable *table, ast_node *node) {
 						switch(val_type) {
 							case TYPE_INT:
 								printf("%d", table->entries[ident_num]->value.intVal);
+								char int_str[20];
+								sprintf(int_str, "%d", table->entries[ident_num]->value.intVal);
+								gtk_text_buffer_insert_at_cursor(out_buffer, "\n", -1);
+								gtk_text_buffer_insert_at_cursor(out_buffer, int_str, -1);
 								break;
 							case TYPE_FLOAT:
 								printf("%f", table->entries[ident_num]->value.floatVal);
+								char flt_str[20];
+								sprintf(flt_str, "%d", table->entries[ident_num]->value.floatVal);
+								gtk_text_buffer_insert_at_cursor(out_buffer, "\n", -1);
+								gtk_text_buffer_insert_at_cursor(out_buffer, flt_str, -1);
 								break;
 							case TYPE_BOOL:
 								printf("%s", table->entries[ident_num]->value.intVal ? "WIN" : "FAIL");
+								gtk_text_buffer_insert_at_cursor(out_buffer, "\n", -1);
+								gtk_text_buffer_insert_at_cursor(out_buffer, table->entries[ident_num]->value.intVal == 1 ? "WIN" : "FALSE", -1);
 								break;
 							/* // ? How to handle printing of uninitialized? */
 							case TYPE_NOOB:
@@ -2425,6 +2453,8 @@ void interpret_walk(SymbolTable *table, ast_node *node) {
 							// default to string to output
 							default:
 								printf("%s", table->entries[ident_num]->value.stringVal);
+								gtk_text_buffer_insert_at_cursor(out_buffer, "\n", -1);
+								gtk_text_buffer_insert_at_cursor(out_buffer, table->entries[ident_num]->value.stringVal, -1);			
 								break;
 						}
 						break;
@@ -2438,6 +2468,10 @@ void interpret_walk(SymbolTable *table, ast_node *node) {
 								// from arithmetic OR comparison 
 								if(result->float_flag == 1){
 									printf("%f", result->eval_data.flt_Result);
+									char flt_str[20];
+									sprintf(int_str, "%d", result->eval_data.flt_Result);
+									gtk_text_buffer_insert_at_cursor(out_buffer, "\n", -1);
+									gtk_text_buffer_insert_at_cursor(out_buffer, flt_str, -1);
 								} else if(result->float_flag == 0) {
 									printf("%d", result->eval_data.int_Result);
 								} // else
