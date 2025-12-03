@@ -1731,9 +1731,11 @@ void typecast_evaluator(ast_node* typecast_node){
 						// create copy of string value without the quotes ""
 						char *str = strdup(target_entry->value.stringVal);
 						char *p = str;
-						p++;
-						p[strlen(p)-1] = '\0';
-						printf("newstr: %s\n", p);
+						if(*p == '"'){						
+							p++;
+							p[strlen(p)-1] = '\0';
+							printf("newstr: %s\n", p);
+						}
 
 						// printf("ASDASDASDSAD %d", isFloat(p));
 
@@ -1773,9 +1775,11 @@ void typecast_evaluator(ast_node* typecast_node){
 						// create copy of string value without the quotes ""
 						char *str = strdup(target_entry->value.stringVal);
 						char *p = str;
-						p++;
-						p[strlen(p)-1] = '\0';
-						printf("newstr: %s\n", p);
+						if(*p == '"'){						
+							p++;
+							p[strlen(p)-1] = '\0';
+							printf("newstr: %s\n", p);
+						}
 
 						// check if the current string value of target_entry can be cast to a number
 						if(isInteger(p) == 0 && isFloat(p) == 0){
@@ -1916,12 +1920,16 @@ void typecast_evaluator(ast_node* typecast_node){
 						// create copy of string value without the quotes ""
 						char *str = strdup(target_entry->value.stringVal);
 						char *p = str;
-						p++;
-						p[strlen(p)-1] = '\0';
-						// printf("newstr: %s\n", p);
+						if(*p == '"'){						
+							p++;
+							p[strlen(p)-1] = '\0';
+							printf("newstr: %s\n", p);
+						}
 
 						// check if the current string value of target_entry can be cast to a int
 						if(isInteger(p) == 0 && isFloat(p) == 0){
+							// printf("%s\n", p);
+							// printf("size: %ld\n", sizeof(p) / sizeof(char));
 							semanticError("Yarn value of %s cannot be cast into a NUMBR.\n");
 						}
 
@@ -1961,9 +1969,11 @@ void typecast_evaluator(ast_node* typecast_node){
 						// create copy of string value without the quotes ""
 						char *str = strdup(target_entry->value.stringVal);
 						char *p = str;
-						p++;
-						p[strlen(p)-1] = '\0';
-						printf("newstr: %s\n", p);
+						if(*p == '"'){						
+							p++;
+							p[strlen(p)-1] = '\0';
+							printf("newstr: %s\n", p);
+						}
 
 						// check if the current string value of target_entry can be cast to a number
 						if(isInteger(p) == 0 && isFloat(p) == 0){
@@ -2114,9 +2124,11 @@ void typecast_evaluator(ast_node* typecast_node){
 						// create copy of string value without the quotes ""
 						char *str = strdup(target_entry->value.stringVal);
 						char *p = str;
-						p++;
-						p[strlen(p)-1] = '\0';
-						printf("newstr: %s\n", p);
+						if(*p == '"'){						
+							p++;
+							p[strlen(p)-1] = '\0';
+							printf("newstr: %s\n", p);
+						}
 
 						// check if the current string value of target_entry can be cast to a int
 						if(isInteger(p) == 0 && isFloat(p) == 0){
@@ -2159,9 +2171,11 @@ void typecast_evaluator(ast_node* typecast_node){
 						// create copy of string value without the quotes ""
 						char *str = strdup(target_entry->value.stringVal);
 						char *p = str;
-						p++;
-						p[strlen(p)-1] = '\0';
-						printf("newstr: %s\n", p);
+						if(*p == '"'){						
+							p++;
+							p[strlen(p)-1] = '\0';
+							printf("newstr: %s\n", p);
+						}
 
 						// check if the current string value of target_entry can be cast to a number
 						if(isInteger(p) == 0 && isFloat(p) == 0){
