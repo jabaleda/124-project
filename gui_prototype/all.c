@@ -2378,7 +2378,8 @@ EvalData *subtree_walk(ast_node *node) {
 
 
 // called from root node, preorder traversal
-void interpret_walk(SymbolTable *table, ast_node *node) {
+// void interpret_walk(SymbolTable *table, ast_node *node) {
+void interpret_walk(SymbolTable *table, ast_node *node, GtkWidget *out_area, GtkTextBuffer *out_buffer) {
 	// printf("%s \n", string_ver[node->type]);
 	// check if print statement encountered, since output is (required) and evaluation may be performed
 	if(node->type == PRINT && node->children[0]->type == PRINT) {
@@ -2474,11 +2475,17 @@ void interpret_walk(SymbolTable *table, ast_node *node) {
 									gtk_text_buffer_insert_at_cursor(out_buffer, flt_str, -1);
 								} else if(result->float_flag == 0) {
 									printf("%d", result->eval_data.int_Result);
+									char int_str[20];
+									sprintf(int_str, "%d", result->eval_data.int_Result);
+									gtk_text_buffer_insert_at_cursor(out_buffer, "\n", -1);
+									gtk_text_buffer_insert_at_cursor(out_buffer, int_str, -1);
 								} // else
 								break; 
 							case 2:
 								// from relational boolean
 								printf("%s", result->eval_data.int_Result ? "WIN" : "FAIL");
+								gtk_text_buffer_insert_at_cursor(out_buffer, "\n", -1);
+								gtk_text_buffer_insert_at_cursor(out_buffer, result->eval_data.int_Result ? "WIN" : "FALSE", -1);
 								break;
 							// could be string from concat
 						}
@@ -2601,7 +2608,8 @@ void interpret_walk(SymbolTable *table, ast_node *node) {
 	
 
 	for(int i = 0; i < node->numChildren; i++){
-		interpret_walk(table, node->children[i]);
+		// interpret_walk(table, node->children[i]);
+		interpret_walk(table, node->children[i], out_area, out_buffer);
 	}
 }
 
@@ -2626,8 +2634,38 @@ void interpret_walk(SymbolTable *table, ast_node *node) {
 
 
 
-int main(){
-	LexemeList* lexList = lex();
+// int main(){
+// 	LexemeList* lexList = lex();
+// 	printf("lexing done...");
+// 	TokenList* tokList = tokenize(lexList);
+// 	lastTokIdx = tokList->numTokens-1;
+// 	cur = tokList->tokens;
+// 	symTable = initSymbolTable();
+// 	// listTokens(tokList);
+
+// 	cur = tokList->tokens;
+// 	FILE *outfile = fopen("tree.txt","w");
+
+// 	// print_table(symTable);
+
+// 	ast_node* root = program(tokList, tokList->numTokens);
+// 	printf("ROOT HAS %d children\n", root->numChildren);
+// 	print_ast_root_f(root, outfile);
+
+// 	print_table(symTable);
+
+// 	printf("%d\n", root->children[0]->type);
+// 	// visit2(root, -1, -1, 'S');
+
+// 	// * Julianne
+// 	// var_dec_tree_walk(root);
+// 	printf("---------- INTERPRETING... ----------\n");
+// 	interpret_walk(symTable, root);
+// 	// Julianne
+// }	
+
+int execute_code(char *file_path, GtkWidget *out_area, GtkTextBuffer *out_buffer){
+	LexemeList* lexList = lex(file_path);
 	printf("lexing done...");
 	TokenList* tokList = tokenize(lexList);
 	lastTokIdx = tokList->numTokens-1;
@@ -2637,9 +2675,6 @@ int main(){
 
 	cur = tokList->tokens;
 	FILE *outfile = fopen("tree.txt","w");
-
-	// print_table(symTable);
-
 	ast_node* root = program(tokList, tokList->numTokens);
 	printf("ROOT HAS %d children\n", root->numChildren);
 	print_ast_root_f(root, outfile);
@@ -2652,6 +2687,6 @@ int main(){
 	// * Julianne
 	// var_dec_tree_walk(root);
 	printf("---------- INTERPRETING... ----------\n");
-	interpret_walk(symTable, root);
+	interpret_walk(symTable, root, out_area, out_buffer);
 	// Julianne
 }	
