@@ -4,6 +4,10 @@
 #include <ctype.h>
 #include <assert.h>
 
+#ifndef ALL_HEADER
+
+#define ALL_HEADER
+
 typedef enum{
 	// Literals
 	TOK_INTEGER,
@@ -430,22 +434,7 @@ void printLexemeList(LexemeList *list) {
 
 
 
-LexemeList* lex(/*FILE* fp*/) {
-
-    // * ----- File reading test ----- 
-    // // File reading
-    // FILE *fileptr;
-    // fileptr = fopen("test.lol", "r");
-    // // file 
-    // char storage[100];
-    // // ? fgets vs fread?
-    // // fgets(storage, 100, fileptr);   // reads one line
-    // while(fgets(storage, 100, fileptr)){
-    //     printf("%s", storage);
-    // }
-    // // printf("%s", storage);
-    // fclose(fileptr);
-    // * ----- End test -----
+LexemeList* lex(char *file_path) {
 
     // * ----- File Reading into Buffer -----
     FILE *fileptr = NULL;
@@ -456,13 +445,12 @@ LexemeList* lex(/*FILE* fp*/) {
     int size = 0;
 
     // ? vary filename as needed. hardcoded file naming munaaa d2
-    // char *cwd = "C:/Users/Julianne/Documents/25-26/CMSC-124/lolcode-testcases-main/lolcode-testcases-main/project-testcases-fixed/01_variables.lol";
-    //char *cwd = "C:/Users/Julianne/Documents/25-26/CMSC-124/lolcode-testcases-main/lolcode-testcases-main/project-testcases-fixed/06_comparison.lol";
-    char *cwd = "sample.lol";
+    // char *cwd = "C:/Users/Julianne/Documents/25-26/CMSC-124/project/repo-files/lexer/sample.lol";
+    // char *cwd = "sample.lol";
 
-    printf("File path: %s\n", cwd);
+    printf("File path: %s\n", file_path);
 
-    fileptr = fopen(cwd, "r");
+    fileptr = fopen(file_path, "r");
 
     while(fgets(line, 1000, fileptr)){
         lines++;
@@ -710,11 +698,11 @@ LexemeList* lex(/*FILE* fp*/) {
             // newline character
             lexeme_end++;
             chars_read++;
-            // // ! TODO: check prev. substr if KTHNXBYE
-            // if(strcmp(lexeme_end, "KTHXBYE") == 0) {
-            //     // set iter to len to terminate loop after this turn
-            //     iter = len;
-            // }
+            // ! TODO: check prev. substr if KTHNXBYE
+            if(strcmp(substrword, "KTHXBYE") == 0) {
+                // set iter to len to terminate loop after this turn
+                iter = len;
+            }
 
             // get substr
             char substr1[2] = "\n";
@@ -722,16 +710,6 @@ LexemeList* lex(/*FILE* fp*/) {
             printf("Newline lexeme: %s\n", substr1);
             Lexeme *newLex = createLexeme(substr1, lines_read);
             addLexemeToList(lexemeList, newLex);
-
-            // ! TODO: check prev. substr if KTHNXBYE
-            if(strcmp(lexeme_end, "KTHXBYE") == 0) {
-                // set iter to len to terminate loop after this turn
-                iter = len;
-                Lexeme *newLex = createLexeme("KTHXBYE", lines_read);
-                addLexemeToList(lexemeList, newLex);
-                lines_read++;
-            }
-
             // increment lines read count for every newline encountered
             lines_read++;
             // add to lexeme list
@@ -749,7 +727,7 @@ LexemeList* lex(/*FILE* fp*/) {
     } // while end
 
 
-    // printLexemeList(lexemeList);
+    printLexemeList(lexemeList);
 
     // tokenize(lexemeList);
 
@@ -1193,3 +1171,5 @@ int setVarEntryValBool(char* id, int val);
 int setVarEntryValType(char* id, char* val);
 void addSymTableEntry(SymbolTable* table, Entry* e);
 SymbolTable* initSymbolTable();
+
+#endif
