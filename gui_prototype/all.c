@@ -1735,7 +1735,7 @@ void typecast_evaluator(ast_node* typecast_node){
 						p[strlen(p)-1] = '\0';
 						printf("newstr: %s\n", p);
 
-						printf("ASDASDASDSAD %d", isFloat(p));
+						// printf("ASDASDASDSAD %d", isFloat(p));
 
 						// check if the current string value of target_entry can be cast to a int
 						if(isInteger(p) == 0 && isFloat(p) == 0){
@@ -1903,7 +1903,7 @@ void typecast_evaluator(ast_node* typecast_node){
 				case TYPE_FLOAT:
 					printf("Casting NUMBAR to NUMBR\n");
 					target_entry->varType = TYPE_INT;
-					printf("OG VALUE: %f\n",target_entry->value.floatVal);
+					// printf("OG VALUE: %f\n",target_entry->value.floatVal);
 
 					// target_entry->value.intVal = (int) target_entry->value.floatVal; 
 					setVarEntryValInt(target_entry->id, target_entry->value.intVal);
@@ -1918,7 +1918,7 @@ void typecast_evaluator(ast_node* typecast_node){
 						char *p = str;
 						p++;
 						p[strlen(p)-1] = '\0';
-						printf("newstr: %s\n", p);
+						// printf("newstr: %s\n", p);
 
 						// check if the current string value of target_entry can be cast to a int
 						if(isInteger(p) == 0 && isFloat(p) == 0){
@@ -2438,7 +2438,7 @@ void interpret_walk(SymbolTable *table, ast_node *node, GtkWidget *out_area, Gtk
 							case TYPE_FLOAT:
 								printf("%f", table->entries[ident_num]->value.floatVal);
 								char flt_str[20];
-								sprintf(flt_str, "%d", table->entries[ident_num]->value.floatVal);
+								sprintf(flt_str, "%f", table->entries[ident_num]->value.floatVal);
 								gtk_text_buffer_insert_at_cursor(out_buffer, "\n", -1);
 								gtk_text_buffer_insert_at_cursor(out_buffer, flt_str, -1);
 								break;
@@ -2470,7 +2470,7 @@ void interpret_walk(SymbolTable *table, ast_node *node, GtkWidget *out_area, Gtk
 								if(result->float_flag == 1){
 									printf("%f", result->eval_data.flt_Result);
 									char flt_str[20];
-									sprintf(int_str, "%d", result->eval_data.flt_Result);
+									sprintf(int_str, "%f", result->eval_data.flt_Result);
 									gtk_text_buffer_insert_at_cursor(out_buffer, "\n", -1);
 									gtk_text_buffer_insert_at_cursor(out_buffer, flt_str, -1);
 								} else if(result->float_flag == 0) {
